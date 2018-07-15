@@ -24,10 +24,31 @@ namespace {
 
 }
 
-void InterruptHandler(int sig) {
+/**
+ * This function is set up to be called when the SIGINT signal is
+ * received by the program.  It just sets the "shutDown" flag
+ * and relies on the program to be polling the flag to detect
+ * when it's been set.
+ *
+ * @param[in] sig
+ *     This is the signal for which this function was called.
+ */
+void InterruptHandler(int) {
     shutDown = true;
 }
 
+/**
+ * This function is the entrypoint of the program.
+ * It just sets up the web server and then waits for
+ * the SIGINT signal to know when the web server should
+ * be shut down and program terminated.
+ *
+ * @param[in] argc
+ *     This is the number of command-line arguments given to the program.
+ *
+ * @param[in] argv
+ *     This is the array of command-line arguments given to the program.
+ */
 int main(int argc, char* argv[]) {
     Http::Server server;
     const auto previousInterruptHandler = signal(SIGINT, InterruptHandler);
