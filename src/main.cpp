@@ -13,6 +13,7 @@
 #include <stdlib.h>
 #include <string>
 #include <Http/Server.hpp>
+#include <HttpNetworkTransport/HttpServerNetworkTransport.hpp>
 #include <thread>
 
 namespace {
@@ -50,7 +51,11 @@ void InterruptHandler(int) {
  *     This is the array of command-line arguments given to the program.
  */
 int main(int argc, char* argv[]) {
+    auto transport = std::make_shared< HttpNetworkTransport::HttpServerNetworkTransport >();
     Http::Server server;
+    if (!server.Mobilize(transport, 8080)) {
+        return EXIT_FAILURE;
+    }
     const auto previousInterruptHandler = signal(SIGINT, InterruptHandler);
     printf("Web server up and running.\n");
     while (!shutDown) {
