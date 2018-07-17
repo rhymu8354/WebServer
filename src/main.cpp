@@ -14,6 +14,7 @@
 #include <string>
 #include <Http/Server.hpp>
 #include <HttpNetworkTransport/HttpServerNetworkTransport.hpp>
+#include <SystemAbstractions/DiagnosticsStreamReporter.hpp>
 #include <thread>
 
 namespace {
@@ -53,6 +54,9 @@ void InterruptHandler(int) {
 int main(int argc, char* argv[]) {
     auto transport = std::make_shared< HttpNetworkTransport::HttpServerNetworkTransport >();
     Http::Server server;
+    const auto diagnosticsSubscription = server.SubscribeToDiagnostics(
+        SystemAbstractions::DiagnosticsStreamReporter(stdout, stderr)
+    );
     if (!server.Mobilize(transport, 8080)) {
         return EXIT_FAILURE;
     }
