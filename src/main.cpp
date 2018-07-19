@@ -52,6 +52,10 @@ void InterruptHandler(int) {
  *     This is the array of command-line arguments given to the program.
  */
 int main(int argc, char* argv[]) {
+#ifdef _WIN32
+    //_crtBreakAlloc = 18;
+    _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
+#endif /* _WIN32 */
     auto transport = std::make_shared< HttpNetworkTransport::HttpServerNetworkTransport >();
     Http::Server server;
     const auto diagnosticsSubscription = server.SubscribeToDiagnostics(
