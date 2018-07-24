@@ -20,3 +20,5 @@ target_link_libraries(${This} PUBLIC
     HttpNetworkTransport
     SystemAbstractions
 )
+
+add_subdirectory(StaticContentPlugin)
