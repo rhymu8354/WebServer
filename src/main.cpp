@@ -478,6 +478,14 @@ namespace {
         while (!shutDown) {
             std::this_thread::sleep_for(std::chrono::milliseconds(250));
         }
+        directoryMonitor.Stop();
+        for (auto& plugin: plugins) {
+            if (plugin.second->unloadDelegate != nullptr) {
+                plugin.second->unloadDelegate();
+                plugin.second->unloadDelegate = nullptr;
+                plugin.second->runtimeLibrary.Unload();
+            }
+        }
     }
 
 }
