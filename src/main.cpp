@@ -7,7 +7,11 @@
  * © 2018 by Richard Walters
  */
 
+#include "Plugin.hpp"
+#include "PluginLoader.hpp"
+
 #include <chrono>
+#include <condition_variable>
 #include <memory>
 #include <signal.h>
 #include <stdio.h>
@@ -16,6 +20,7 @@
 #include <Http/Server.hpp>
 #include <HttpNetworkTransport/HttpServerNetworkTransport.hpp>
 #include <Json/Json.hpp>
+#include <mutex>
 #include <stdio.h>
 #include <SystemAbstractions/DiagnosticsStreamReporter.hpp>
 #include <SystemAbstractions/DirectoryMonitor.hpp>
@@ -62,217 +67,6 @@ namespace {
          * plug-ins to be loaded will be made.
          */
         std::string pluginsRuntimePath = SystemAbstractions::File::GetExeParentDirectory() + "/runtime";
-    };
-
-    /**
-     * This is the information tracked for each plug-in.
-     */
-    struct Plugin {
-        // Properties
-
-        /**
-         * This is the time that the plug-in image was last modified.
-         */
-        time_t lastModifiedTime = 0;
-
-        /**
-         * This is the plug-in image file.
-         */
-        SystemAbstractions::File imageFile;
-
-        /**
-         * This is the plug-in runtime file.
-         */
-        SystemAbstractions::File runtimeFile;
-
-        /**
-         * This is the name of the plug-in runtime file,
-         * without the file extension (if any).
-         */
-        std::string moduleName;
-
-        /**
-         * This is the configuration object to give to the plug-in when
-         * it's loaded.
-         */
-        std::shared_ptr< Json::Json > configuration;
-
-        /**
-         * This is used to dynamically link with the run-time copy
-         * of the plug-in image.
-         */
-        SystemAbstractions::DynamicLibrary runtimeLibrary;
-
-        /**
-         * If the plug-in is currently loaded, this is the function to
-         * call in order to unload it.
-         */
-        std::function< void() > unloadDelegate;
-
-        // Methods
-
-        /**
-         * This is the constructor for the structure.
-         *
-         * @param[in] imageFileName
-         *     This is the plug-in image file name.
-         *
-         * @param[in] runtimeFileName
-         *     This is the plug-in runtime file name.
-         */
-        Plugin(
-            const std::string& imageFileName,
-            const std::string& runtimeFileName
-        )
-            : imageFile(imageFileName)
-            , runtimeFile(runtimeFileName)
-        {
-        }
-
-        /**
-         * This method cleanly loads the plug-in, following this
-         * general procedure:
-         * 1. Make a copy of the plug-in code, from the image folder
-         *    to the runtime folder.
-         * 2. Link the plug-in code.
-         * 3. Locate the plug-in entrypoint function, "LoadPlugin".
-         * 4. Call the entrypoint function, providing the plug-in
-         *    with access to the server.  The plug-in will return
-         *    a function the server can call later to unload the plug-in.
-         *    The plug-in can signal a "failure to load" or other
-         *    kind of fatal error simply by leaving the "unload"
-         *    delegate as a nullptr.
-         *
-         * @param[in] pluginName
-         *     This is the name identifying the plug-in in any diagnostic
-         *     messages relating to the plug-in.
-         *
-         * @param[in] pluginsRuntimePath
-         *     This is the path to where a copy of the plug-in code
-         *     is made, in order to link the code without locking
-         *     the original code image.  This is so that the original
-         *     code image can be updated even while the plug-in is loaded.
-         *
-         * @param[in,out] server
-         *     This is the server for which to load the plug-in.
-         *
-         * @param[in] diagnosticMessageDelegate
-         *     This is the function to call to publish any diagnostic messages.
-         */
-        void Load(
-            const std::string& pluginName,
-            const std::string& pluginsRuntimePath,
-            Http::Server& server,
-            SystemAbstractions::DiagnosticsSender::DiagnosticMessageDelegate diagnosticMessageDelegate
-        ) {
-            if (imageFile.Copy(runtimeFile.GetPath())) {
-                if (runtimeLibrary.Load(pluginsRuntimePath, moduleName)) {
-                    const auto loadPlugin = (
-                        void(*)(
-                            Http::Server& server,
-                            Json::Json configuration,
-                            SystemAbstractions::DiagnosticsSender::DiagnosticMessageDelegate diagnosticMessageDelegate,
-                            std::function< void() >& unloadDelegate
-                        )
-                    )runtimeLibrary.GetProcedure("LoadPlugin");
-                    if (loadPlugin != nullptr) {
-                        loadPlugin(
-                            server,
-                            *configuration,
-                            [diagnosticMessageDelegate, pluginName](
-                                std::string senderName,
-                                size_t level,
-                                std::string message
-                            ) {
-                                if (senderName.empty()) {
-                                    diagnosticMessageDelegate(
-                                        pluginName,
-                                        level,
-                                        message
-                                    );
-                                } else {
-                                    diagnosticMessageDelegate(
-                                        SystemAbstractions::sprintf(
-                                            "%s/%s",
-                                            pluginName.c_str(),
-                                            senderName.c_str()
-                                        ),
-                                        level,
-                                        message
-                                    );
-                                }
-                            },
-                            unloadDelegate
-                        );
-                        if (unloadDelegate == nullptr) {
-                            diagnosticMessageDelegate(
-                                "",
-                                SystemAbstractions::DiagnosticsSender::Levels::WARNING,
-                                SystemAbstractions::sprintf(
-                                    "plugin '%s' failed to load",
-                                    pluginName.c_str()
-                                )
-                            );
-                        }
-                    } else {
-                        diagnosticMessageDelegate(
-                            "",
-                            SystemAbstractions::DiagnosticsSender::Levels::WARNING,
-                            SystemAbstractions::sprintf(
-                                "unable to find plugin '%s' entrypoint",
-                                pluginName.c_str()
-                            )
-                        );
-                    }
-                    if (unloadDelegate == nullptr) {
-                        runtimeLibrary.Unload();
-                    }
-                } else {
-                    diagnosticMessageDelegate(
-                        "",
-                        SystemAbstractions::DiagnosticsSender::Levels::WARNING,
-                        SystemAbstractions::sprintf(
-                            "unable to link plugin '%s' library",
-                            pluginName.c_str()
-                        )
-                    );
-                }
-                if (unloadDelegate == nullptr) {
-                    runtimeFile.Destroy();
-                }
-            } else {
-                diagnosticMessageDelegate(
-                    "",
-                    SystemAbstractions::DiagnosticsSender::Levels::WARNING,
-                    SystemAbstractions::sprintf(
-                        "unable to copy plugin '%s' library",
-                        pluginName.c_str()
-                    )
-                );
-            }
-        }
-
-        /**
-         * This method cleanly unloads the plug-in, following this
-         * general procedure:
-         * 1. Call the "unload" delegate provided by the plug-in.
-         *    Typically this delegate will turn around and revoke
-         *    its registrations with the web server.
-         * 2. Release the unload delegate (by assigning nullptr
-         *    to the variable holding onto it.  Typically this
-         *    will cause any state captured in the unload delegate
-         *    to be destroyed/freed.  After this, it should be
-         *    safe to unlink the plug-in code.
-         * 3. Unlink the plug-in code.
-         */
-        void Unload() {
-            if (unloadDelegate == nullptr) {
-                return;
-            }
-            unloadDelegate();
-            unloadDelegate = nullptr;
-            runtimeLibrary.Unload();
-        }
     };
 
     /**
@@ -480,7 +274,6 @@ namespace {
         const Environment& environment,
         SystemAbstractions::DiagnosticsSender::DiagnosticMessageDelegate diagnosticMessageDelegate
     ) {
-        SystemAbstractions::DirectoryMonitor directoryMonitor;
         std::string pluginsImagePath = environment.pluginsImagePath;
         if (configuration.Has("plugins-image")) {
             pluginsImagePath = *configuration["plugins-image"];
@@ -489,7 +282,6 @@ namespace {
         if (configuration.Has("plugins-runtime")) {
             pluginsRuntimePath = *configuration["plugins-runtime"];
         }
-        std::map< std::string, std::shared_ptr< Plugin > > plugins;
         const auto pluginsEntries = configuration["plugins"];
         const auto pluginsEnabled = configuration["plugins-enabled"];
         std::string moduleExtension;
@@ -500,6 +292,7 @@ namespace {
 #else
         moduleExtension = ".so";
 #endif
+        std::map< std::string, std::shared_ptr< Plugin > > plugins;
         for (size_t i = 0; i < pluginsEnabled->GetSize(); ++i) {
             const std::string pluginName = *(*pluginsEnabled)[i];
             if (pluginsEntries->Has(pluginName)) {
@@ -514,38 +307,24 @@ namespace {
                 plugin->lastModifiedTime = plugin->imageFile.GetLastModifiedTime();
             }
         }
-        const auto pluginScanDelegate = [
-            &server,
-            &plugins,
-            configuration,
-            diagnosticMessageDelegate,
+        PluginLoader pluginLoader(
+            server,
+            plugins,
             pluginsImagePath,
-            pluginsRuntimePath
-        ]{
-            for (auto& plugin: plugins) {
-                if (
-                    (plugin.second->unloadDelegate == nullptr)
-                    && plugin.second->imageFile.IsExisting()
-                ) {
-                    plugin.second->Load(
-                        plugin.first,
-                        pluginsRuntimePath,
-                        server,
-                        diagnosticMessageDelegate
-                    );
-                }
-            }
-        };
-        pluginScanDelegate();
-        if (!directoryMonitor.Start(pluginScanDelegate, pluginsImagePath)) {
-            fprintf(stderr, "warning: unable to monitor plug-ins image directory (%s)\n", pluginsImagePath.c_str());
-        }
+            pluginsRuntimePath,
+            diagnosticMessageDelegate
+        );
+        pluginLoader.Scan();
+        pluginLoader.StartBackgroundScanning();
         while (!shutDown) {
             std::this_thread::sleep_for(std::chrono::milliseconds(250));
         }
-        directoryMonitor.Stop();
+        pluginLoader.StopBackgroundScanning();
         for (auto& plugin: plugins) {
-            plugin.second->Unload();
+            plugin.second->Unload(
+                plugin.first,
+                diagnosticMessageDelegate
+            );
         }
     }
 
