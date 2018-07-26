@@ -26,10 +26,10 @@ struct Plugin {
     // Properties
 
     /**
-     * This flag indicates whether or not the plug-in should
-     * be loaded or reloaded.
+     * This flag indicates whether or not the web server has
+     * determined that the plug-in is a candidate to be loaded.
      */
-    bool needsLoading = true;
+    bool loadable = true;
 
     /**
      * This is the time that the plug-in image was last modified.

@@ -78,7 +78,7 @@ void Plugin::Load(
                             pluginName.c_str()
                         )
                     );
-                    needsLoading = false;
+                    loadable = false;
                 } else {
                     diagnosticMessageDelegate("", 1, SystemAbstractions::sprintf("Plug-in '%s' loaded", pluginName.c_str()));
                 }
@@ -91,7 +91,7 @@ void Plugin::Load(
                         pluginName.c_str()
                     )
                 );
-                needsLoading = false;
+                loadable = false;
             }
             if (unloadDelegate == nullptr) {
                 runtimeLibrary.Unload();
@@ -105,7 +105,7 @@ void Plugin::Load(
                     pluginName.c_str()
                 )
             );
-            needsLoading = false;
+            loadable = false;
         }
         if (unloadDelegate == nullptr) {
             runtimeFile.Destroy();

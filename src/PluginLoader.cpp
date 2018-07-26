@@ -117,6 +117,8 @@ struct PluginLoader::Impl {
      */
     void Scan() {
         for (auto& plugin: plugins) {
+            // If the image file doesn't exist, unload the plug-in
+            // if it's loaded, and then move on to the next plug-in.
             if (!plugin.second->imageFile.IsExisting()) {
                 if (plugin.second->unloadDelegate != nullptr) {
                     plugin.second->Unload(plugin.first, diagnosticMessageDelegate);
@@ -124,18 +126,28 @@ struct PluginLoader::Impl {
                 }
                 continue;
             }
+
+            // If the plug-in is loaded, move on to the next plug-in.
             if (plugin.second->unloadDelegate != nullptr) {
                 continue;
             }
-            if (!plugin.second->needsLoading) {
-                const auto lastModifiedTime = plugin.second->imageFile.GetLastModifiedTime();
-                if (plugin.second->lastModifiedTime != lastModifiedTime) {
-                    diagnosticMessageDelegate("PluginLoader", 0, SystemAbstractions::sprintf("plugin '%s' appears to have changed", plugin.first.c_str()));
-                    plugin.second->needsLoading = true;
-                    plugin.second->lastModifiedTime = lastModifiedTime;
-                }
+
+            // --------------
+            // We reach here only if:
+            // 1. The plug-in image is found.
+            // 2. The plug-in is not loaded.
+            // --------------
+
+            // Mark the plug-in as being loadable if it changed.
+            const auto lastModifiedTime = plugin.second->imageFile.GetLastModifiedTime();
+            if (plugin.second->lastModifiedTime != lastModifiedTime) {
+                diagnosticMessageDelegate("PluginLoader", 0, SystemAbstractions::sprintf("plugin '%s' appears to have changed", plugin.first.c_str()));
+                plugin.second->loadable = true;
+                plugin.second->lastModifiedTime = lastModifiedTime;
             }
-            if (plugin.second->needsLoading) {
+
+            // If the plug-in is loadable, try to load it.
+            if (plugin.second->loadable) {
                 plugin.second->Load(
                     plugin.first,
                     runtimePath,
@@ -144,7 +156,7 @@ struct PluginLoader::Impl {
                 );
                 if (
                     (plugin.second->unloadDelegate == nullptr)
-                    && plugin.second->needsLoading
+                    && plugin.second->loadable
                 ) {
                     diagnosticMessageDelegate(
                         "PluginLoader",
