@@ -128,6 +128,151 @@ namespace {
             , runtimeFile(runtimeFileName)
         {
         }
+
+        /**
+         * This method cleanly loads the plug-in, following this
+         * general procedure:
+         * 1. Make a copy of the plug-in code, from the image folder
+         *    to the runtime folder.
+         * 2. Link the plug-in code.
+         * 3. Locate the plug-in entrypoint function, "LoadPlugin".
+         * 4. Call the entrypoint function, providing the plug-in
+         *    with access to the server.  The plug-in will return
+         *    a function the server can call later to unload the plug-in.
+         *    The plug-in can signal a "failure to load" or other
+         *    kind of fatal error simply by leaving the "unload"
+         *    delegate as a nullptr.
+         *
+         * @param[in] pluginName
+         *     This is the name identifying the plug-in in any diagnostic
+         *     messages relating to the plug-in.
+         *
+         * @param[in] pluginsRuntimePath
+         *     This is the path to where a copy of the plug-in code
+         *     is made, in order to link the code without locking
+         *     the original code image.  This is so that the original
+         *     code image can be updated even while the plug-in is loaded.
+         *
+         * @param[in,out] server
+         *     This is the server for which to load the plug-in.
+         *
+         * @param[in] diagnosticMessageDelegate
+         *     This is the function to call to publish any diagnostic messages.
+         */
+        void Load(
+            const std::string& pluginName,
+            const std::string& pluginsRuntimePath,
+            Http::Server& server,
+            SystemAbstractions::DiagnosticsSender::DiagnosticMessageDelegate diagnosticMessageDelegate
+        ) {
+            if (imageFile.Copy(runtimeFile.GetPath())) {
+                if (runtimeLibrary.Load(pluginsRuntimePath, moduleName)) {
+                    const auto loadPlugin = (
+                        void(*)(
+                            Http::Server& server,
+                            Json::Json configuration,
+                            SystemAbstractions::DiagnosticsSender::DiagnosticMessageDelegate diagnosticMessageDelegate,
+                            std::function< void() >& unloadDelegate
+                        )
+                    )runtimeLibrary.GetProcedure("LoadPlugin");
+                    if (loadPlugin != nullptr) {
+                        loadPlugin(
+                            server,
+                            *configuration,
+                            [diagnosticMessageDelegate, pluginName](
+                                std::string senderName,
+                                size_t level,
+                                std::string message
+                            ) {
+                                if (senderName.empty()) {
+                                    diagnosticMessageDelegate(
+                                        pluginName,
+                                        level,
+                                        message
+                                    );
+                                } else {
+                                    diagnosticMessageDelegate(
+                                        SystemAbstractions::sprintf(
+                                            "%s/%s",
+                                            pluginName.c_str(),
+                                            senderName.c_str()
+                                        ),
+                                        level,
+                                        message
+                                    );
+                                }
+                            },
+                            unloadDelegate
+                        );
+                        if (unloadDelegate == nullptr) {
+                            diagnosticMessageDelegate(
+                                "",
+                                SystemAbstractions::DiagnosticsSender::Levels::WARNING,
+                                SystemAbstractions::sprintf(
+                                    "plugin '%s' failed to load",
+                                    pluginName.c_str()
+                                )
+                            );
+                        }
+                    } else {
+                        diagnosticMessageDelegate(
+                            "",
+                            SystemAbstractions::DiagnosticsSender::Levels::WARNING,
+                            SystemAbstractions::sprintf(
+                                "unable to find plugin '%s' entrypoint",
+                                pluginName.c_str()
+                            )
+                        );
+                    }
+                    if (unloadDelegate == nullptr) {
+                        runtimeLibrary.Unload();
+                    }
+                } else {
+                    diagnosticMessageDelegate(
+                        "",
+                        SystemAbstractions::DiagnosticsSender::Levels::WARNING,
+                        SystemAbstractions::sprintf(
+                            "unable to link plugin '%s' library",
+                            pluginName.c_str()
+                        )
+                    );
+                }
+                if (unloadDelegate == nullptr) {
+                    runtimeFile.Destroy();
+                }
+            } else {
+                diagnosticMessageDelegate(
+                    "",
+                    SystemAbstractions::DiagnosticsSender::Levels::WARNING,
+                    SystemAbstractions::sprintf(
+                        "unable to copy plugin '%s' library",
+                        pluginName.c_str()
+                    )
+                );
+            }
+        }
+
+        /**
+         * This method cleanly unloads the plug-in, following this
+         * general procedure:
+         * 1. Call the "unload" delegate provided by the plug-in.
+         *    Typically this delegate will turn around and revoke
+         *    its registrations with the web server.
+         * 2. Release the unload delegate (by assigning nullptr
+         *    to the variable holding onto it.  Typically this
+         *    will cause any state captured in the unload delegate
+         *    to be destroyed/freed.  After this, it should be
+         *    safe to unlink the plug-in code.
+         * 3. Unlink the plug-in code.
+         */
+        void Unload() {
+            if (unloadDelegate == nullptr) {
+                return;
+            }
+            unloadDelegate();
+            unloadDelegate = nullptr;
+            runtimeLibrary.Unload();
+        }
     };
 
     /**
@@ -382,92 +527,12 @@ namespace {
                     (plugin.second->unloadDelegate == nullptr)
                     && plugin.second->imageFile.IsExisting()
                 ) {
-                    if (plugin.second->imageFile.Copy(plugin.second->runtimeFile.GetPath())) {
-                        if (plugin.second->runtimeLibrary.Load(pluginsRuntimePath, plugin.second->moduleName)) {
-                            const auto loadPlugin = (
-                                void(*)(
-                                    Http::Server& server,
-                                    Json::Json configuration,
-                                    SystemAbstractions::DiagnosticsSender::DiagnosticMessageDelegate diagnosticMessageDelegate,
-                                    std::function< void() >& unloadDelegate
-                                )
-                            )plugin.second->runtimeLibrary.GetProcedure("LoadPlugin");
-                            if (loadPlugin != nullptr) {
-                                const std::string pluginName = plugin.first;
-                                loadPlugin(
-                                    server,
-                                    *plugin.second->configuration,
-                                    [diagnosticMessageDelegate, pluginName](
-                                        std::string senderName,
-                                        size_t level,
-                                        std::string message
-                                    ) {
-                                        if (senderName.empty()) {
-                                            diagnosticMessageDelegate(
-                                                pluginName,
-                                                level,
-                                                message
-                                            );
-                                        } else {
-                                            diagnosticMessageDelegate(
-                                                SystemAbstractions::sprintf(
-                                                    "%s/%s",
-                                                    pluginName.c_str(),
-                                                    senderName.c_str()
-                                                ),
-                                                level,
-                                                message
-                                            );
-                                        }
-                                    },
-                                    plugin.second->unloadDelegate
-                                );
-                                if (plugin.second->unloadDelegate == nullptr) {
-                                    diagnosticMessageDelegate(
-                                        "",
-                                        SystemAbstractions::DiagnosticsSender::Levels::WARNING,
-                                        SystemAbstractions::sprintf(
-                                            "plugin '%s' failed to load",
-                                            plugin.first.c_str()
-                                        )
-                                    );
-                                }
-                            } else {
-                                diagnosticMessageDelegate(
-                                    "",
-                                    SystemAbstractions::DiagnosticsSender::Levels::WARNING,
-                                    SystemAbstractions::sprintf(
-                                        "unable to find plugin '%s' entrypoint",
-                                        plugin.first.c_str()
-                                    )
-                                );
-                            }
-                            if (plugin.second->unloadDelegate == nullptr) {
-                                plugin.second->runtimeLibrary.Unload();
-                            }
-                        } else {
-                            diagnosticMessageDelegate(
-                                "",
-                                SystemAbstractions::DiagnosticsSender::Levels::WARNING,
-                                SystemAbstractions::sprintf(
-                                    "unable to link plugin '%s' library",
-                                    plugin.first.c_str()
-                                )
-                            );
-                        }
-                        if (plugin.second->unloadDelegate == nullptr) {
-                            plugin.second->runtimeFile.Destroy();
-                        }
-                    } else {
-                        diagnosticMessageDelegate(
-                            "",
-                            SystemAbstractions::DiagnosticsSender::Levels::WARNING,
-                            SystemAbstractions::sprintf(
-                                "unable to copy plugin '%s' library",
-                                plugin.first.c_str()
-                            )
-                        );
-                    }
+                    plugin.second->Load(
+                        plugin.first,
+                        pluginsRuntimePath,
+                        server,
+                        diagnosticMessageDelegate
+                    );
                 }
             }
         };
@@ -480,11 +545,7 @@ namespace {
         }
         directoryMonitor.Stop();
         for (auto& plugin: plugins) {
-            if (plugin.second->unloadDelegate != nullptr) {
-                plugin.second->unloadDelegate();
-                plugin.second->unloadDelegate = nullptr;
-                plugin.second->runtimeLibrary.Unload();
-            }
+            plugin.second->Unload();
         }
     }
 
