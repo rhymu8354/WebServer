@@ -13,6 +13,7 @@
 #include <map>
 #include <mutex>
 #include <SystemAbstractions/DirectoryMonitor.hpp>
+#include <SystemAbstractions/StringExtensions.hpp>
 #include <thread>
 
 /**
@@ -116,16 +117,41 @@ struct PluginLoader::Impl {
      */
     void Scan() {
         for (auto& plugin: plugins) {
-            if (
-                (plugin.second->unloadDelegate == nullptr)
-                && plugin.second->imageFile.IsExisting()
-            ) {
+            if (!plugin.second->imageFile.IsExisting()) {
+                continue;
+            }
+            if (plugin.second->unloadDelegate != nullptr) {
+                continue;
+            }
+            if (!plugin.second->needsLoading) {
+                const auto lastModifiedTime = plugin.second->imageFile.GetLastModifiedTime();
+                if (plugin.second->lastModifiedTime != lastModifiedTime) {
+                    diagnosticMessageDelegate("PluginLoader", 0, SystemAbstractions::sprintf("plugin '%s' appears to have changed", plugin.first.c_str()));
+                    plugin.second->needsLoading = true;
+                    plugin.second->lastModifiedTime = lastModifiedTime;
+                }
+            }
+            if (plugin.second->needsLoading) {
                 plugin.second->Load(
                     plugin.first,
                     runtimePath,
                     server,
                     diagnosticMessageDelegate
                 );
+                if (
+                    (plugin.second->unloadDelegate == nullptr)
+                    && plugin.second->needsLoading
+                ) {
+                    diagnosticMessageDelegate(
+                        "PluginLoader",
+                        SystemAbstractions::DiagnosticsSender::Levels::WARNING,
+                        SystemAbstractions::sprintf(
+                            "plugin '%s' failed to copy...will attempt to copy and load again soon",
+                            plugin.first.c_str()
+                        )
+                    );
+                    scan = true;
+                }
             }
         }
     }

@@ -26,6 +26,12 @@ struct Plugin {
     // Properties
 
     /**
+     * This flag indicates whether or not the plug-in should
+     * be loaded or reloaded.
+     */
+    bool needsLoading = true;
+
+    /**
      * This is the time that the plug-in image was last modified.
      */
     time_t lastModifiedTime = 0;
