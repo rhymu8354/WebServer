@@ -127,8 +127,39 @@ struct PluginLoader::Impl {
                 continue;
             }
 
-            // If the plug-in is loaded, move on to the next plug-in.
+            // Detect if the image file changed.
+            const auto lastModifiedTime = plugin.second->imageFile.GetLastModifiedTime();
+            const auto changed = (plugin.second->lastModifiedTime != lastModifiedTime);
+            plugin.second->lastModifiedTime = lastModifiedTime;
+
+            // If the plug-in is loaded, check if it changed.  If so,
+            // reload it (unload, copy new image, load).
+            // Then move on to the next plug-in.
             if (plugin.second->unloadDelegate != nullptr) {
+                if (changed) {
+                    plugin.second->Unload(plugin.first, diagnosticMessageDelegate);
+                    plugin.second->loadable = true;
+                    plugin.second->Load(
+                        plugin.first,
+                        runtimePath,
+                        server,
+                        diagnosticMessageDelegate
+                    );
+                    if (
+                        (plugin.second->unloadDelegate == nullptr)
+                        && plugin.second->loadable
+                    ) {
+                        diagnosticMessageDelegate(
+                            "PluginLoader",
+                            SystemAbstractions::DiagnosticsSender::Levels::WARNING,
+                            SystemAbstractions::sprintf(
+                                "plugin '%s' failed to copy...will attempt to copy and load again soon",
+                                plugin.first.c_str()
+                            )
+                        );
+                        scan = true;
+                    }
+                }
                 continue;
             }
 
@@ -139,11 +170,9 @@ struct PluginLoader::Impl {
             // --------------
 
             // Mark the plug-in as being loadable if it changed.
-            const auto lastModifiedTime = plugin.second->imageFile.GetLastModifiedTime();
-            if (plugin.second->lastModifiedTime != lastModifiedTime) {
+            if (changed) {
                 diagnosticMessageDelegate("PluginLoader", 0, SystemAbstractions::sprintf("plugin '%s' appears to have changed", plugin.first.c_str()));
                 plugin.second->loadable = true;
-                plugin.second->lastModifiedTime = lastModifiedTime;
             }
 
             // If the plug-in is loadable, try to load it.
