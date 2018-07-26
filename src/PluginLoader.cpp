@@ -118,6 +118,10 @@ struct PluginLoader::Impl {
     void Scan() {
         for (auto& plugin: plugins) {
             if (!plugin.second->imageFile.IsExisting()) {
+                if (plugin.second->unloadDelegate != nullptr) {
+                    plugin.second->Unload(plugin.first, diagnosticMessageDelegate);
+                    plugin.second->loadable = true;
+                }
                 continue;
             }
             if (plugin.second->unloadDelegate != nullptr) {
