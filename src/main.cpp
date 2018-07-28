@@ -13,6 +13,7 @@
 
 #include <chrono>
 #include <condition_variable>
+#include <inttypes.h>
 #include <memory>
 #include <signal.h>
 #include <stdio.h>
@@ -235,13 +236,14 @@ namespace {
         Http::Server::MobilizationDependencies deps;
         deps.transport = std::make_shared< HttpNetworkTransport::HttpServerNetworkTransport >();
         deps.timeKeeper = std::make_shared< TimeKeeper >();
-        deps.port = 0;
+        uint16_t port = 0;
         if (configuration.Has("port")) {
-            deps.port = (int)configuration["port"];
+            port = (int)configuration["port"];
         }
-        if (deps.port == 0) {
-            deps.port = DEFAULT_PORT;
+        if (port == 0) {
+            port = DEFAULT_PORT;
         }
+        server.SetConfigurationItem("Port", SystemAbstractions::sprintf("%" PRIu16, port));
         if (!server.Mobilize(deps)) {
             return false;
         }
