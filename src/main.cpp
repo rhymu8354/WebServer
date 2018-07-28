@@ -216,10 +216,6 @@ namespace {
      * @param[in,out] server
      *     This is the server to configure and start.
      *
-     * @param[in] transport
-     *     This is the transport layer to give to the server for interfacing
-     *     with the network.
-     *
      * @param[in] configuration
      *     This holds all of the server's configuration items.
      *
@@ -232,12 +228,11 @@ namespace {
      */
     bool ConfigureAndStartServer(
         Http::Server& server,
-        std::shared_ptr< Http::ServerTransport > transport,
         const Json::Json& configuration,
         const Environment& environment
     ) {
         Http::Server::MobilizationDependencies deps;
-        deps.transport = transport;
+        deps.transport = std::make_shared< HttpNetworkTransport::HttpServerNetworkTransport >();
         deps.port = 0;
         if (configuration.Has("port")) {
             deps.port = (int)configuration["port"];
@@ -354,12 +349,11 @@ int main(int argc, char* argv[]) {
     if (!ProcessCommandLineArguments(argc, argv, environment)) {
         return EXIT_FAILURE;
     }
-    auto transport = std::make_shared< HttpNetworkTransport::HttpServerNetworkTransport >();
     Http::Server server;
     const auto diagnosticsPublisher = SystemAbstractions::DiagnosticsStreamReporter(stdout, stderr);
     const auto diagnosticsSubscription = server.SubscribeToDiagnostics(diagnosticsPublisher);
     const auto configuration = ReadConfiguration(environment);
-    if (!ConfigureAndStartServer(server, transport, configuration, environment)) {
+    if (!ConfigureAndStartServer(server, configuration, environment)) {
         return EXIT_FAILURE;
     }
     printf("Web server up and running.\n");
