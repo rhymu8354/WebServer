@@ -71,7 +71,7 @@ extern "C" API void LoadPlugin(
         [](
             std::shared_ptr< Http::Request > request
         ){
-            const auto response = std::make_shared< Http::Client::Response >();
+            const auto response = std::make_shared< Http::Response >();
             response->statusCode = 200;
             response->reasonPhrase = "OK";
             response->headers.AddHeader("Content-Type", "text/plain");
