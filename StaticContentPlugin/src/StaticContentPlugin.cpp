@@ -9,6 +9,7 @@
 
 #include <functional>
 #include <Http/Server.hpp>
+#include <inttypes.h>
 #include <Json/Json.hpp>
 #include <SystemAbstractions/File.hpp>
 #include <SystemAbstractions/StringExtensions.hpp>
@@ -102,13 +103,29 @@ extern "C" API void LoadPlugin(
                 if (file.Open()) {
                     SystemAbstractions::File::Buffer buffer(file.GetSize());
                     if (file.Read(buffer) == buffer.size()) {
-                        response->statusCode = 200;
-                        response->reasonPhrase = "OK";
+                        // TODO: replace with something that gives
+                        // a strong entity tag -- this one is weak.
+                        uint32_t sum = 0;
+                        for (auto b: buffer) {
+                            sum += b;
+                        }
+                        const auto etag = SystemAbstractions::sprintf("%" PRIu32, sum);
+                        if (
+                            request->headers.HasHeader("If-None-Match")
+                            && (request->headers.GetHeaderValue("If-None-Match") == etag)
+                        ) {
+                            response->statusCode = 304;
+                            response->reasonPhrase = "Not Modified";
+                        } else {
+                            response->statusCode = 200;
+                            response->reasonPhrase = "OK";
+                            response->body.assign(
+                                buffer.begin(),
+                                buffer.end()
+                            );
+                        }
                         response->headers.AddHeader("Content-Type", "text/html");
-                        response->body.assign(
-                            buffer.begin(),
-                            buffer.end()
-                        );
+                        response->headers.AddHeader("ETag", etag);
                     } else {
                         response->statusCode = 500;
                         response->reasonPhrase = "Unable to read file";

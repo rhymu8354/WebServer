@@ -164,3 +164,54 @@ TEST_F(StaticContentPluginTests, ServeTestFile) {
     const auto response = server.registeredResourceDelegate(request);
     ASSERT_EQ("Hello!", response->body);
 }
+
+TEST_F(StaticContentPluginTests, ConditionalGetWithMatchingEntityTagHitsCache) {
+    // Create test file.
+    SystemAbstractions::File testFile(testAreaPath + "/foo.txt");
+    (void)testFile.Create();
+    (void)testFile.Write("Hello!", 6);
+    testFile.Close();
+
+    // Configure plug-in.
+    MockServer server;
+    std::function< void() > unloadDelegate;
+    Json::Json config(Json::Json::Type::Object);
+    config.Set("space", "/");
+    config.Set("root", testAreaPath);
+    LoadPlugin(
+        &server,
+        config,
+        [](
+            std::string senderName,
+            size_t level,
+            std::string message
+        ){
+            printf(
+                "[%s:%zu] %s\n",
+                senderName.c_str(),
+                level,
+                message.c_str()
+            );
+        },
+        unloadDelegate
+    );
+
+    // Send initial request to get the entity tag
+    // of the test file.
+    auto request = std::make_shared< Http::Request >();
+    request->target.SetPath({"foo.txt"});
+    auto response = server.registeredResourceDelegate(request);
+    ASSERT_EQ(200, response->statusCode);
+    ASSERT_TRUE(response->headers.HasHeader("ETag"));
+    const auto etag = response->headers.GetHeaderValue("ETag");
+
+    // Send second conditional request for the test
+    // file, this time expecting "304 Not Modified" response.
+    request = std::make_shared< Http::Request >();
+    request->target.SetPath({"foo.txt"});
+    request->headers.SetHeader("If-None-Match", etag);
+    response = server.registeredResourceDelegate(request);
+    EXPECT_EQ(304, response->statusCode);
+    EXPECT_EQ("Not Modified", response->reasonPhrase);
+    EXPECT_TRUE(response->body.empty());
+}
