@@ -10,6 +10,7 @@
 #include <functional>
 #include <Http/Server.hpp>
 #include <Json/Json.hpp>
+#include <SystemAbstractions/File.hpp>
 #include <SystemAbstractions/StringExtensions.hpp>
 #include <WebServer/PluginEntryPoint.hpp>
 
@@ -47,6 +48,7 @@ extern "C" API void LoadPlugin(
     SystemAbstractions::DiagnosticsSender::DiagnosticMessageDelegate diagnosticMessageDelegate,
     std::function< void() >& unloadDelegate
 ) {
+    // Determine the resource space we're serving.
     Uri::Uri uri;
     if (!configuration.Has("space")) {
         diagnosticMessageDelegate(
@@ -66,20 +68,80 @@ extern "C" API void LoadPlugin(
     }
     auto space = uri.GetPath();
     (void)space.erase(space.begin());
+
+    // Determine where to locate the static content.
+    if (!configuration.Has("root")) {
+        diagnosticMessageDelegate(
+            "",
+            SystemAbstractions::DiagnosticsSender::Levels::ERROR,
+            "no 'root' URI in configuration"
+        );
+        return;
+    }
+    const std::string root = *configuration["root"];
+
+    // Register to handle requests for the space we're serving.
     const auto unregistrationDelegate = server->RegisterResource(
         space,
-        [](
+        [root](
             std::shared_ptr< Http::Request > request
         ){
+            const auto path = SystemAbstractions::Join(
+                {
+                    root,
+                    SystemAbstractions::Join(request->target.GetPath(), "/")
+                },
+                "/"
+            );
+            SystemAbstractions::File file(path);
             const auto response = std::make_shared< Http::Response >();
-            response->statusCode = 200;
-            response->reasonPhrase = "OK";
-            response->headers.AddHeader("Content-Type", "text/plain");
-            response->body = "Coming soon...\r\n";
+            if (
+                file.IsExisting()
+                && !file.IsDirectory()
+            ) {
+                if (file.Open()) {
+                    SystemAbstractions::File::Buffer buffer(file.GetSize());
+                    if (file.Read(buffer) == buffer.size()) {
+                        response->statusCode = 200;
+                        response->reasonPhrase = "OK";
+                        response->headers.AddHeader("Content-Type", "text/html");
+                        response->body.assign(
+                            buffer.begin(),
+                            buffer.end()
+                        );
+                    } else {
+                        response->statusCode = 500;
+                        response->reasonPhrase = "Unable to read file";
+                        response->headers.AddHeader("Content-Type", "text/plain");
+                        response->body = SystemAbstractions::sprintf(
+                            "Error reading file '%s'",
+                            path.c_str()
+                        );
+                    }
+                } else {
+                    response->statusCode = 500;
+                    response->reasonPhrase = "Unable to open file";
+                    response->headers.AddHeader("Content-Type", "text/plain");
+                    response->body = SystemAbstractions::sprintf(
+                        "Error opening file '%s'",
+                        path.c_str()
+                    );
+                }
+            } else {
+                response->statusCode = 404;
+                response->reasonPhrase = "Not Found";
+                response->headers.AddHeader("Content-Type", "text/plain");
+                response->body = SystemAbstractions::sprintf(
+                    "File '%s' not found.",
+                    path.c_str()
+                );
+            }
             response->headers.AddHeader("Content-Length", SystemAbstractions::sprintf("%zu", response->body.length()));
             return response;
         }
     );
+
+    // Give back the delete to call just before this plug-in is unloaded.
     unloadDelegate = [unregistrationDelegate]{
         unregistrationDelegate();
     };
