@@ -22,3 +22,5 @@ target_link_libraries(${This} PUBLIC
     SystemAbstractions
     Uri
 )
+
+add_subdirectory(test)
