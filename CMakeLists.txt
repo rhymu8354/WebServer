@@ -15,6 +15,8 @@ set(Sources
     src/Plugin.hpp
     src/PluginLoader.cpp
     src/PluginLoader.hpp
+    src/TimeKeeper.cpp
+    src/TimeKeeper.hpp
 )
 
 add_executable(${This} ${Sources} ${Headers})

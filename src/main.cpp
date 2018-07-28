@@ -9,6 +9,7 @@
 
 #include "Plugin.hpp"
 #include "PluginLoader.hpp"
+#include "TimeKeeper.hpp"
 
 #include <chrono>
 #include <condition_variable>
@@ -233,6 +234,7 @@ namespace {
     ) {
         Http::Server::MobilizationDependencies deps;
         deps.transport = std::make_shared< HttpNetworkTransport::HttpServerNetworkTransport >();
+        deps.timeKeeper = std::make_shared< TimeKeeper >();
         deps.port = 0;
         if (configuration.Has("port")) {
             deps.port = (int)configuration["port"];
