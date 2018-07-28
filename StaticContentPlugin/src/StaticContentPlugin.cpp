@@ -58,7 +58,7 @@ extern "C" API void LoadPlugin(
         );
         return;
     }
-    if (!uri.ParseFromString(*configuration["space"])) {
+    if (!uri.ParseFromString(configuration["space"])) {
         diagnosticMessageDelegate(
             "",
             SystemAbstractions::DiagnosticsSender::Levels::ERROR,
@@ -78,7 +78,7 @@ extern "C" API void LoadPlugin(
         );
         return;
     }
-    const std::string root = *configuration["root"];
+    const std::string root = configuration["root"];
 
     // Register to handle requests for the space we're serving.
     const auto unregistrationDelegate = server->RegisterResource(

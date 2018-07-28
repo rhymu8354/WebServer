@@ -238,7 +238,7 @@ namespace {
     ) {
         uint16_t port = 0;
         if (configuration.Has("port")) {
-            port = (int)*configuration["port"];
+            port = (int)configuration["port"];
         }
         if (port == 0) {
             port = DEFAULT_PORT;
@@ -276,11 +276,11 @@ namespace {
     ) {
         std::string pluginsImagePath = environment.pluginsImagePath;
         if (configuration.Has("plugins-image")) {
-            pluginsImagePath = *configuration["plugins-image"];
+            pluginsImagePath = configuration["plugins-image"];
         }
         std::string pluginsRuntimePath = environment.pluginsRuntimePath;
         if (configuration.Has("plugins-runtime")) {
-            pluginsRuntimePath = *configuration["plugins-runtime"];
+            pluginsRuntimePath = configuration["plugins-runtime"];
         }
         const auto pluginsEntries = configuration["plugins"];
         const auto pluginsEnabled = configuration["plugins-enabled"];
@@ -293,17 +293,17 @@ namespace {
         moduleExtension = ".so";
 #endif
         std::map< std::string, std::shared_ptr< Plugin > > plugins;
-        for (size_t i = 0; i < pluginsEnabled->GetSize(); ++i) {
-            const std::string pluginName = *(*pluginsEnabled)[i];
-            if (pluginsEntries->Has(pluginName)) {
-                const auto pluginEntry = (*pluginsEntries)[pluginName];
-                const std::string pluginModule = *(*pluginEntry)["module"];
+        for (size_t i = 0; i < pluginsEnabled.GetSize(); ++i) {
+            const std::string pluginName = pluginsEnabled[i];
+            if (pluginsEntries.Has(pluginName)) {
+                const auto pluginEntry = pluginsEntries[pluginName];
+                const std::string pluginModule = pluginEntry["module"];
                 const auto plugin = plugins[pluginName] = std::make_shared< Plugin >(
                     pluginsImagePath + "/" + pluginModule + moduleExtension,
                     pluginsRuntimePath + "/" + pluginModule + moduleExtension
                 );
                 plugin->moduleName = pluginModule;
-                plugin->configuration = (*pluginEntry)["configuration"];
+                plugin->configuration = pluginEntry["configuration"];
                 plugin->lastModifiedTime = plugin->imageFile.GetLastModifiedTime();
             }
         }
