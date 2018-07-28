@@ -10,7 +10,7 @@
  */
 
 #include <functional>
-#include <Http/Server.hpp>
+#include <Http/IServer.hpp>
 #include <Json/Json.hpp>
 #include <SystemAbstractions/DiagnosticsSender.hpp>
 
@@ -37,7 +37,7 @@
  *     was unable to load successfully.
  */
 typedef void (*PluginEntryPoint)(
-    Http::Server& server,
+    Http::IServer* server,
     Json::Json configuration,
     SystemAbstractions::DiagnosticsSender::DiagnosticMessageDelegate diagnosticMessageDelegate,
     std::function< void() >& unloadDelegate

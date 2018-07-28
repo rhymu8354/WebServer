@@ -36,7 +36,7 @@ void Plugin::Load(
             if (loadPlugin != nullptr) {
                 diagnosticMessageDelegate("", 0, SystemAbstractions::sprintf("Loading plug-in '%s'", pluginName.c_str()));
                 loadPlugin(
-                    server,
+                    &server,
                     *configuration,
                     [diagnosticMessageDelegate, pluginName](
                         std::string senderName,

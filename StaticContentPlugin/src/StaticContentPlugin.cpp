@@ -42,7 +42,7 @@
  *     was unable to load successfully.
  */
 extern "C" API void LoadPlugin(
-    Http::Server& server,
+    Http::IServer* server,
     Json::Json configuration,
     SystemAbstractions::DiagnosticsSender::DiagnosticMessageDelegate diagnosticMessageDelegate,
     std::function< void() >& unloadDelegate
@@ -66,7 +66,7 @@ extern "C" API void LoadPlugin(
     }
     auto space = uri.GetPath();
     (void)space.erase(space.begin());
-    const auto unregistrationDelegate = server.RegisterResource(
+    const auto unregistrationDelegate = server->RegisterResource(
         space,
         [](
             std::shared_ptr< Http::Server::Request > request
