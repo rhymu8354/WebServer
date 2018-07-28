@@ -35,12 +35,6 @@
 namespace {
 
     /**
-     * This is the default port number on which to listen for
-     * connections from web clients.
-     */
-    constexpr uint16_t DEFAULT_PORT = 8080;
-
-    /**
      * This flag indicates whether or not the web server should shut down.
      */
     bool shutDown = false;
@@ -151,7 +145,6 @@ namespace {
         // Start with a default configuration, to be used if there are any
         // issues reading the actual configuration file.
         Json::Json configuration(Json::Json::Type::Object);
-        configuration.Set("port", DEFAULT_PORT);
 
         // Open the configuration file.
         std::vector< std::string > possibleConfigFilePaths = {
@@ -236,14 +229,9 @@ namespace {
         Http::Server::MobilizationDependencies deps;
         deps.transport = std::make_shared< HttpNetworkTransport::HttpServerNetworkTransport >();
         deps.timeKeeper = std::make_shared< TimeKeeper >();
-        uint16_t port = 0;
-        if (configuration.Has("port")) {
-            port = (int)configuration["port"];
+        for (const auto& key: configuration["server"].GetKeys()) {
+            server.SetConfigurationItem(key, configuration["server"][key]);
         }
-        if (port == 0) {
-            port = DEFAULT_PORT;
-        }
-        server.SetConfigurationItem("Port", SystemAbstractions::sprintf("%" PRIu16, port));
         if (!server.Mobilize(deps)) {
             return false;
         }
