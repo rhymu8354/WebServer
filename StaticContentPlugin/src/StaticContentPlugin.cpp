@@ -69,7 +69,7 @@ extern "C" API void LoadPlugin(
     const auto unregistrationDelegate = server->RegisterResource(
         space,
         [](
-            std::shared_ptr< Http::Server::Request > request
+            std::shared_ptr< Http::Request > request
         ){
             const auto response = std::make_shared< Http::Client::Response >();
             response->statusCode = 200;
