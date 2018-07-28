@@ -10,6 +10,7 @@
 #include "Plugin.hpp"
 
 #include <SystemAbstractions/StringExtensions.hpp>
+#include <WebServer/PluginEntryPoint.hpp>
 
 Plugin::Plugin(
     const std::string& imageFileName,
@@ -31,14 +32,7 @@ void Plugin::Load(
         diagnosticMessageDelegate("", 0, SystemAbstractions::sprintf("Linking plug-in '%s'", pluginName.c_str()));
         if (runtimeLibrary.Load(pluginsRuntimePath, moduleName)) {
             diagnosticMessageDelegate("", 0, SystemAbstractions::sprintf("Locating plug-in '%s' entrypoint", pluginName.c_str()));
-            const auto loadPlugin = (
-                void(*)(
-                    Http::Server& server,
-                    Json::Json configuration,
-                    SystemAbstractions::DiagnosticsSender::DiagnosticMessageDelegate diagnosticMessageDelegate,
-                    std::function< void() >& unloadDelegate
-                )
-            )runtimeLibrary.GetProcedure("LoadPlugin");
+            const auto loadPlugin = (PluginEntryPoint)runtimeLibrary.GetProcedure("LoadPlugin");
             if (loadPlugin != nullptr) {
                 diagnosticMessageDelegate("", 0, SystemAbstractions::sprintf("Loading plug-in '%s'", pluginName.c_str()));
                 loadPlugin(

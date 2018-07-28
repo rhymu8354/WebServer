@@ -5,6 +5,10 @@
 cmake_minimum_required(VERSION 3.8)
 set(This WebServer)
 
+set(Headers
+    include/WebServer/PluginEntryPoint.hpp
+)
+
 set(Sources
     src/main.cpp
     src/Plugin.cpp
@@ -13,10 +17,12 @@ set(Sources
     src/PluginLoader.hpp
 )
 
-add_executable(${This} ${Sources})
+add_executable(${This} ${Sources} ${Headers})
 set_target_properties(${This} PROPERTIES
     FOLDER Applications
 )
+
+target_include_directories(${This} PUBLIC include)
 
 target_link_libraries(${This} PUBLIC
     Json
