@@ -236,14 +236,16 @@ namespace {
         const Json::Json& configuration,
         const Environment& environment
     ) {
-        uint16_t port = 0;
+        Http::Server::MobilizationDependencies deps;
+        deps.transport = transport;
+        deps.port = 0;
         if (configuration.Has("port")) {
-            port = (int)configuration["port"];
+            deps.port = (int)configuration["port"];
         }
-        if (port == 0) {
-            port = DEFAULT_PORT;
+        if (deps.port == 0) {
+            deps.port = DEFAULT_PORT;
         }
-        if (!server.Mobilize(transport, port)) {
+        if (!server.Mobilize(deps)) {
             return false;
         }
         return true;
