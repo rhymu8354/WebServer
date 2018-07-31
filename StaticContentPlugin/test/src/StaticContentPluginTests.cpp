@@ -161,7 +161,7 @@ TEST_F(StaticContentPluginTests, ServeTestFile) {
     );
     const auto request = std::make_shared< Http::Request >();
     request->target.SetPath({"foo.txt"});
-    const auto response = server.registeredResourceDelegate(request);
+    const auto response = server.registeredResourceDelegate(request, nullptr);
     ASSERT_EQ("Hello!", response->body);
 }
 
@@ -200,7 +200,7 @@ TEST_F(StaticContentPluginTests, ConditionalGetWithMatchingEntityTagHitsCache) {
     // of the test file.
     auto request = std::make_shared< Http::Request >();
     request->target.SetPath({"foo.txt"});
-    auto response = server.registeredResourceDelegate(request);
+    auto response = server.registeredResourceDelegate(request, nullptr);
     ASSERT_EQ(200, response->statusCode);
     ASSERT_TRUE(response->headers.HasHeader("ETag"));
     const auto etag = response->headers.GetHeaderValue("ETag");
@@ -210,7 +210,7 @@ TEST_F(StaticContentPluginTests, ConditionalGetWithMatchingEntityTagHitsCache) {
     request = std::make_shared< Http::Request >();
     request->target.SetPath({"foo.txt"});
     request->headers.SetHeader("If-None-Match", etag);
-    response = server.registeredResourceDelegate(request);
+    response = server.registeredResourceDelegate(request, nullptr);
     EXPECT_EQ(304, response->statusCode);
     EXPECT_EQ("Not Modified", response->reasonPhrase);
     EXPECT_TRUE(response->body.empty());

@@ -85,7 +85,8 @@ extern "C" API void LoadPlugin(
     const auto unregistrationDelegate = server->RegisterResource(
         space,
         [root](
-            std::shared_ptr< Http::Request > request
+            std::shared_ptr< Http::Request > request,
+            std::shared_ptr< Http::Connection > connection
         ){
             const auto path = SystemAbstractions::Join(
                 {
