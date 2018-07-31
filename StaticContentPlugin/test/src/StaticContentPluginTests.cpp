@@ -2,7 +2,7 @@
  * @file StaticContentPluginTests.cpp
  *
  * This module contains the unit tests of the
- * Json::Json class.
+ * Static Content web-server plugin.
  *
  * © 2018 by Richard Walters
  */
