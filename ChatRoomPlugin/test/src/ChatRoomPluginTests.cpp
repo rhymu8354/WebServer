@@ -8,9 +8,11 @@
  */
 
 #include <gtest/gtest.h>
+#include <Json/Json.hpp>
 #include <stdio.h>
 #include <string>
 #include <SystemAbstractions/File.hpp>
+#include <vector>
 #include <WebServer/PluginEntryPoint.hpp>
 #include <WebSockets/WebSocket.hpp>
 
@@ -97,6 +99,12 @@ namespace {
         // Properties
 
         /**
+         * This is the delegate to call whenever data is to be sent
+         * to the remote peer.
+         */
+        DataReceivedDelegate sendDataDelegate;
+
+        /**
          * This is the delegate to call whenever data is recevied
          * from the remote peer.
          */
@@ -107,11 +115,6 @@ namespace {
          * has been broken.
          */
         BrokenDelegate brokenDelegate;
-
-        /**
-         * This holds onto a copy of all data received from the remote peer.
-         */
-        std::vector< uint8_t > dataReceived;
 
         /**
          * This flag is set if the remote peer breaks the connection.
@@ -148,11 +151,7 @@ namespace {
         }
 
         virtual void SendData(const std::vector< uint8_t >& data) override {
-            (void)dataReceived.insert(
-                dataReceived.end(),
-                data.begin(),
-                data.end()
-            );
+            sendDataDelegate(data);
         }
 
         virtual void Break(bool clean) override {
@@ -198,6 +197,11 @@ struct ChatRoomPluginTests
      */
     std::shared_ptr< MockConnection > serverConnection = std::make_shared< MockConnection >("mock-server");
 
+    /**
+     * This stores all text messages received from the chat room.
+     */
+    std::vector< Json::Json > messagesReceived;
+
     // Methods
 
     // ::testing::Test
@@ -222,6 +226,21 @@ struct ChatRoomPluginTests
             },
             unloadDelegate
         );
+        clientConnection->sendDataDelegate = [this](
+            const std::vector< uint8_t >& data
+        ){
+            serverConnection->dataReceivedDelegate(data);
+        };
+        serverConnection->sendDataDelegate = [this](
+            const std::vector< uint8_t >& data
+        ){
+            clientConnection->dataReceivedDelegate(data);
+        };
+        ws.SetTextDelegate(
+            [this](const std::string& data){
+                messagesReceived.push_back(Json::Json::FromEncoding(data));
+            }
+        );
         const auto openRequest = std::make_shared< Http::Request >();
         openRequest->method = "GET";
         (void)openRequest->target.ParseFromString("/chat");
@@ -235,7 +254,7 @@ struct ChatRoomPluginTests
     }
 };
 
-TEST_F(ChatRoomPluginTests, Load) {
+TEST_F(ChatRoomPluginTests, LoadAndConnect) {
     ASSERT_FALSE(unloadDelegate == nullptr);
     ASSERT_FALSE(server.registeredResourceDelegate == nullptr);
     ASSERT_EQ(
@@ -246,6 +265,13 @@ TEST_F(ChatRoomPluginTests, Load) {
     );
 }
 
-TEST_F(ChatRoomPluginTests, Connect) {
-    
+TEST_F(ChatRoomPluginTests, SetNickName) {
+    ws.SendText("{\"Type\": \"SetNickName\", \"NickName\": \"Bob\"}");
+    ws.SendText("{\"Type\": \"GetNickNames\"}");
+    ASSERT_EQ(
+        (std::vector< Json::Json >{
+            Json::Json::FromEncoding("{\"Type\": \"NickNames\", \"NickNames\": [\"Bob\"]}"),
+        }),
+        messagesReceived
+    );
 }

@@ -7,6 +7,7 @@
  * © 2018 by Richard Walters
  */
 
+#include <condition_variable>
 #include <functional>
 #include <Http/Server.hpp>
 #include <inttypes.h>
@@ -15,6 +16,7 @@
 #include <mutex>
 #include <string>
 #include <SystemAbstractions/StringExtensions.hpp>
+#include <thread>
 #include <WebServer/PluginEntryPoint.hpp>
 #include <WebSockets/WebSocket.hpp>
 
@@ -30,20 +32,21 @@ namespace {
      * This represents one user in the chat room.
      */
     struct User {
-        // Properties
-
         /**
          * This is the nickname to show for the user.
          */
         std::string nickname;
 
         /**
-         * This is the web socket connection to the user.
+         * This is the WebSocket connection to the user.
          */
         WebSockets::WebSocket ws;
 
-        // Methods
-
+        /**
+         * This flag indicates whether or not the WebSocket
+         * connection to the user is still open.
+         */
+        bool open = true;
     };
 
     /**
@@ -58,10 +61,32 @@ namespace {
         std::mutex mutex;
 
         /**
+         * This is used to notify the worker thread about
+         * any change that should cause it to wake up.
+         */
+        std::condition_variable workerWakeCondition;
+
+        /**
+         * This is used to perform housekeeping in the background.
+         */
+        std::thread workerThread;
+
+        /**
+         * This flag indicates whether or not the worker thread should stop.
+         */
+        bool stopWorker = false;
+
+        /**
          * These are the users currently in the chat room,
          * keyed by session ID.
          */
         std::map< unsigned int, User > users;
+
+        /**
+         * This flag indicates whether or not there are users
+         * in the chat room whose web sockets have closed.
+         */
+        bool usersHaveClosed = false;
 
         /**
          * This is the next session ID that may be assigned
@@ -70,6 +95,125 @@ namespace {
         unsigned int nextSessionId = 1;
 
         // Methods
+
+        /**
+         * This is called just before the chat room is connected
+         * into the web server, in order to prepare it for operation.
+         */
+        void Start() {
+            if (workerThread.joinable()) {
+                return;
+            }
+            stopWorker = false;
+            workerThread = std::thread(&Room::Worker, this);
+        }
+
+        /**
+         * This is called just after the chat room is disconnection
+         * from the web server, in order to cleanly shut it down.
+         */
+        void Stop() {
+            if (!workerThread.joinable()) {
+                return;
+            }
+            {
+                std::lock_guard< decltype(mutex) > lock(mutex);
+                stopWorker = true;
+                workerWakeCondition.notify_all();
+            }
+            workerThread.join();
+        }
+
+        /**
+         * This function is called in a separate thread to perform
+         * housekeeping in the background for the chat room.
+         */
+        void Worker() {
+            std::unique_lock< decltype(mutex) > lock(mutex);
+            while (!stopWorker) {
+                workerWakeCondition.wait(
+                    lock,
+                    [this]{ return stopWorker || usersHaveClosed; }
+                );
+                if (usersHaveClosed) {
+                    std::vector< User > closedUsers;
+                    for (
+                        auto userEntry = users.begin();
+                        userEntry != users.end();
+                    ) {
+                        if (userEntry->second.open) {
+                            ++userEntry;
+                        } else {
+                            closedUsers.push_back(std::move(userEntry->second));
+                            userEntry = users.erase(userEntry);
+                        }
+                    }
+                    usersHaveClosed = false;
+                    {
+                        lock.unlock();
+                        closedUsers.clear();
+                        lock.lock();
+                    }
+                }
+            }
+        }
+
+        /**
+         * This is called whenever a text message is received from
+         * a user in the chat room.
+         *
+         * @param[in] sessionId
+         *     This is the session ID of the user who sent the message.
+         *
+         * @param[in] data
+         *     This is the content of the message received from the user.
+         */
+        void ReceiveMessage(
+            unsigned int sessionId,
+            const std::string& data
+        ) {
+            std::lock_guard< decltype(mutex) > lock(mutex);
+            const auto userEntry = users.find(sessionId);
+            if (userEntry == users.end()) {
+                return;
+            }
+            const auto message = Json::Json::FromEncoding(data);
+            if (
+                (message["Type"] == "SetNickName")
+                && message.Has("NickName")
+            ) {
+                userEntry->second.nickname = message["NickName"];
+            } else if (message["Type"] == "GetNickNames") {
+                Json::Json response(Json::Json::Type::Object);
+                response.Set("Type", "NickNames");
+                Json::Json nicknames(Json::Json::Type::Array);
+                for (const auto& user: users) {
+                    if (!user.second.nickname.empty()) {
+                        nicknames.Add(user.second.nickname);
+                    }
+                }
+                response.Set("NickNames", nicknames);
+                userEntry->second.ws.SendText(response.ToEncoding());
+            }
+        }
+
+        /**
+         * This is called whenever the WebSocket to a user has
+         * been closed, in order to remove the user from the room.
+         *
+         * @param[in] sessionId
+         *     This is the session ID of the user who left the room.
+         */
+        void RemoveUser(unsigned int sessionId) {
+            std::lock_guard< decltype(mutex) > lock(mutex);
+            const auto userEntry = users.find(sessionId);
+            if (userEntry == users.end()) {
+                return;
+            }
+            userEntry->second.open = false;
+            usersHaveClosed = true;
+            workerWakeCondition.notify_all();
+        }
 
         /**
          * This method is called whenever a new user tries
@@ -92,6 +236,17 @@ namespace {
             const auto response = std::make_shared< Http::Response >();
             const auto sessionId = nextSessionId++;
             auto& user = users[sessionId];
+            user.ws.SetTextDelegate(
+                [this, sessionId](const std::string& data){ ReceiveMessage(sessionId, data); }
+            );
+            user.ws.SetCloseDelegate(
+                [this, sessionId](
+                    unsigned int code,
+                    const std::string& reason
+                ){
+                    RemoveUser(sessionId);
+                }
+            );
             if (
                 !user.ws.OpenAsServer(
                     connection,
