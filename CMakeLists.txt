@@ -33,4 +33,5 @@ target_link_libraries(${This} PUBLIC
     SystemAbstractions
 )
 
+add_subdirectory(ChatRoomPlugin)
 add_subdirectory(StaticContentPlugin)
