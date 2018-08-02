@@ -374,12 +374,20 @@ namespace {
          * @param[in] connection
          *     This is the connection on which the request was made.
          *
+         * @param[in] trailer
+         *     This holds any characters that have already been received
+         *     by the server but come after the end of the current
+         *     request.  A handler that upgrades the connection might want
+         *     to interpret these characters within the context of the
+         *     upgraded connection.
+         *
          * @return
          *     The response to be returned to the client is returned.
          */
         std::shared_ptr< Http::Response > AddUser(
             std::shared_ptr< Http::Request > request,
-            std::shared_ptr< Http::Connection > connection
+            std::shared_ptr< Http::Connection > connection,
+            const std::string& trailer
         ) {
             std::lock_guard< decltype(mutex) > lock(mutex);
             const auto response = std::make_shared< Http::Response >();
@@ -400,7 +408,8 @@ namespace {
                 !user.ws.OpenAsServer(
                     connection,
                     *request,
-                    *response
+                    *response,
+                    trailer
                 )
             ) {
                 (void)users.erase(sessionId);
@@ -468,7 +477,7 @@ extern "C" API void LoadPlugin(
             std::shared_ptr< Http::Connection > connection,
             const std::string& trailer
         ){
-            return room.AddUser(request, connection);
+            return room.AddUser(request, connection, trailer);
         }
     );
 

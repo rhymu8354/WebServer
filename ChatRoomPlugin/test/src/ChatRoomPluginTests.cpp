@@ -230,6 +230,56 @@ struct ChatRoomPluginTests
 
     // Methods
 
+    /**
+     * This method sets up the given client-side WebSocket
+     * used to test the chat room.
+     *
+     * @param[in] i
+     *     This is the index of the client-side WebSocket to set up.
+     */
+    void InitilizeClientWebSocket(size_t i) {
+        clientConnection[i] = std::make_shared< MockConnection >(
+            SystemAbstractions::sprintf(
+                "mock-client-%zu",
+                i
+            )
+        );
+        serverConnection[i] = std::make_shared< MockConnection >(
+            SystemAbstractions::sprintf(
+                "mock-server-%zu",
+                i
+            )
+        );
+        clientConnection[i]->sendDataDelegate = [this, i](
+            const std::vector< uint8_t >& data
+        ){
+            serverConnection[i]->dataReceivedDelegate(data);
+        };
+        serverConnection[i]->sendDataDelegate = [this, i](
+            const std::vector< uint8_t >& data
+        ){
+            clientConnection[i]->dataReceivedDelegate(data);
+        };
+        wsClosed[i] = false;
+        ws[i].SetTextDelegate(
+            [this, i](const std::string& data){
+                std::lock_guard< decltype(mutex) > lock(mutex);
+                messagesReceived[i].push_back(Json::Json::FromEncoding(data));
+                waitCondition.notify_all();
+            }
+        );
+        ws[i].SetCloseDelegate(
+            [this, i](
+                unsigned int code,
+                const std::string& reason
+            ){
+                std::lock_guard< decltype(mutex) > lock(mutex);
+                wsClosed[i] = true;
+                waitCondition.notify_all();
+            }
+        );
+    }
+
     // ::testing::Test
 
     virtual void SetUp() {
@@ -253,46 +303,7 @@ struct ChatRoomPluginTests
             unloadDelegate
         );
         for (size_t i = 0; i < NUM_MOCK_CLIENTS; ++i) {
-             clientConnection[i] = std::make_shared< MockConnection >(
-                 SystemAbstractions::sprintf(
-                     "mock-client-%zu",
-                     i
-                 )
-             );
-             serverConnection[i] = std::make_shared< MockConnection >(
-                 SystemAbstractions::sprintf(
-                     "mock-server-%zu",
-                     i
-                 )
-             );
-            clientConnection[i]->sendDataDelegate = [this, i](
-                const std::vector< uint8_t >& data
-            ){
-                serverConnection[i]->dataReceivedDelegate(data);
-            };
-            serverConnection[i]->sendDataDelegate = [this, i](
-                const std::vector< uint8_t >& data
-            ){
-                clientConnection[i]->dataReceivedDelegate(data);
-            };
-            wsClosed[i] = false;
-            ws[i].SetTextDelegate(
-                [this, i](const std::string& data){
-                    std::lock_guard< decltype(mutex) > lock(mutex);
-                    messagesReceived[i].push_back(Json::Json::FromEncoding(data));
-                    waitCondition.notify_all();
-                }
-            );
-            ws[i].SetCloseDelegate(
-                [this, i](
-                    unsigned int code,
-                    const std::string& reason
-                ){
-                    std::lock_guard< decltype(mutex) > lock(mutex);
-                    wsClosed[i] = true;
-                    waitCondition.notify_all();
-                }
-            );
+            InitilizeClientWebSocket(i);
             const auto openRequest = std::make_shared< Http::Request >();
             openRequest->method = "GET";
             (void)openRequest->target.ParseFromString("/chat");
@@ -671,5 +682,73 @@ TEST_F(ChatRoomPluginTests, Leave) {
     expectedResponse.Set("NickNames", {"Bob"});
     expectedResponses.push_back(expectedResponse);
     ASSERT_EQ(expectedResponses, messagesReceived[0]);
+    messagesReceived[0].clear();
+}
+
+TEST_F(ChatRoomPluginTests, SetNickNameInTrailer) {
+    // Reopen a WebSocket connection with part of a
+    // "SetNickName" message captured in the trailer.
+    const std::string password = "PogChamp";
+    Json::Json message(Json::Json::Type::Object);
+    message.Set("Type", "SetNickName");
+    message.Set("NickName", "Bob");
+    message.Set("Password", password);
+    const auto messageEncoding = message.ToEncoding();
+    const char mask[4] = {0x12, 0x34, 0x56, 0x78};
+    std::string frame = "\x81";
+    frame += (char)(0x80 + messageEncoding.length());
+    frame += std::string(mask, 4);
+    for (size_t i = 0; i < messageEncoding.length(); ++i) {
+        frame += messageEncoding[i] ^ mask[i % 4];
+    }
+    const auto frameFirstHalf = frame.substr(0, frame.length() / 2);
+    const auto frameSecondHalf = frame.substr(frame.length() / 2);
+    ws[0].Close();
+    {
+        std::unique_lock< decltype(mutex) > lock(mutex);
+        ASSERT_TRUE(
+            waitCondition.wait_for(
+                lock,
+                std::chrono::seconds(1),
+                [this]{ return wsClosed[0]; }
+            )
+        );
+    }
+    const auto openRequest = std::make_shared< Http::Request >();
+    openRequest->method = "GET";
+    (void)openRequest->target.ParseFromString("/chat");
+    ws[0] = WebSockets::WebSocket();
+    InitilizeClientWebSocket(0);
+    ws[0].StartOpenAsClient(*openRequest);
+    const auto openResponse = server.registeredResourceDelegate(openRequest, serverConnection[0], frameFirstHalf);
+    ASSERT_TRUE(ws[0].FinishOpenAsClient(clientConnection[0], *openResponse));
+    serverConnection[0]->dataReceivedDelegate(
+        std::vector< uint8_t >(
+            frameSecondHalf.begin(),
+            frameSecondHalf.end()
+        )
+    );
+    Json::Json expectedResponse(Json::Json::Type::Object);
+    expectedResponse.Set("Type", "SetNickNameResult");
+    expectedResponse.Set("Success", true);
+    ASSERT_EQ(
+        (std::vector< Json::Json >{
+            expectedResponse,
+        }),
+        messagesReceived[0]
+    );
+    messagesReceived[0].clear();
+    message = Json::Json(Json::Json::Type::Object);
+    message.Set("Type", "GetNickNames");
+    ws[0].SendText(message.ToEncoding());
+    expectedResponse = Json::Json(Json::Json::Type::Object);
+    expectedResponse.Set("Type", "NickNames");
+    expectedResponse.Set("NickNames", {"Bob"});
+    ASSERT_EQ(
+        (std::vector< Json::Json >{
+            expectedResponse,
+        }),
+        messagesReceived[0]
+    );
     messagesReceived[0].clear();
 }
