@@ -465,7 +465,8 @@ extern "C" API void LoadPlugin(
         space,
         [](
             std::shared_ptr< Http::Request > request,
-            std::shared_ptr< Http::Connection > connection
+            std::shared_ptr< Http::Connection > connection,
+            const std::string& trailer
         ){
             return room.AddUser(request, connection);
         }

@@ -297,7 +297,7 @@ struct ChatRoomPluginTests
             openRequest->method = "GET";
             (void)openRequest->target.ParseFromString("/chat");
             ws[i].StartOpenAsClient(*openRequest);
-            const auto openResponse = server.registeredResourceDelegate(openRequest, serverConnection[i]);
+            const auto openResponse = server.registeredResourceDelegate(openRequest, serverConnection[i], "");
             ASSERT_TRUE(ws[i].FinishOpenAsClient(clientConnection[i], *openResponse));
         }
     }
