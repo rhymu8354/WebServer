@@ -203,7 +203,25 @@ namespace {
                     || (accountEntry->second.password == password)
                 )
             ) {
+                bool alreadyInRoom = false;
+                for (const auto& user: users) {
+                    if (user.second.nickname == nickname) {
+                        alreadyInRoom = true;
+                        break;
+                    }
+                }
                 userEntry->second.nickname = message["NickName"];
+                if (!alreadyInRoom) {
+                    Json::Json response(Json::Json::Type::Object);
+                    response.Set("Type", "Join");
+                    response.Set("NickName", nickname);
+                    const auto responseEncoding = response.ToEncoding();
+                    for (auto& user: users) {
+                        if (user.second.nickname != nickname) {
+                            user.second.ws.SendText(responseEncoding);
+                        }
+                    }
+                }
                 auto& account = accounts[nickname];
                 account.password = password;
                 response.Set("Success", true);

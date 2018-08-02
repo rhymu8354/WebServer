@@ -339,6 +339,7 @@ TEST_F(ChatRoomPluginTests, SetNickNameTwice) {
     // Set nickname for second client, trying
     // to grab the same nickname as the first client,
     // but with the wrong password.
+    messagesReceived[1].clear();
     const std::string password2 = "Poggers";
     message = Json::Json(Json::Json::Type::Object);
     message.Set("Type", "SetNickName");
@@ -361,6 +362,7 @@ TEST_F(ChatRoomPluginTests, SetNickNameTwice) {
     // with the correct password.  This is allowed, and
     // a real-world use case might be the same user joining
     // the chat room from two separate browser windows.
+    messagesReceived[2].clear();
     message = Json::Json(Json::Json::Type::Object);
     message.Set("Type", "SetNickName");
     message.Set("NickName", "Bob");
@@ -452,6 +454,7 @@ TEST_F(ChatRoomPluginTests, Tell) {
     messagesReceived[0].clear();
 
     // Alice joins the room.
+    messagesReceived[1].clear();
     const std::string password2 = "FeelsBadMan";
     message = Json::Json(Json::Json::Type::Object);
     message.Set("Type", "SetNickName");
@@ -470,6 +473,7 @@ TEST_F(ChatRoomPluginTests, Tell) {
     messagesReceived[1].clear();
 
     // Bob peeks at the chat room member list.
+    messagesReceived[0].clear();
     message = Json::Json(Json::Json::Type::Object);
     message.Set("Type", "GetNickNames");
     ws[0].SendText(message.ToEncoding());
@@ -517,6 +521,57 @@ TEST_F(ChatRoomPluginTests, Tell) {
     EXPECT_TRUE(messagesReceived[1].empty());
 }
 
+TEST_F(ChatRoomPluginTests, Join) {
+    // Bob joins the room.
+    const std::string password1 = "PogChamp";
+    Json::Json message(Json::Json::Type::Object);
+    message.Set("Type", "SetNickName");
+    message.Set("NickName", "Bob");
+    message.Set("Password", password1);
+    ws[0].SendText(message.ToEncoding());
+    Json::Json expectedResponse(Json::Json::Type::Object);
+    expectedResponse.Set("Type", "SetNickNameResult");
+    expectedResponse.Set("Success", true);
+    ASSERT_EQ(
+        (std::vector< Json::Json >{
+            expectedResponse,
+        }),
+        messagesReceived[0]
+    );
+    messagesReceived[0].clear();
+
+    // Alice joins the room.  Expect Bob to see a message
+    // about Alice joining, but don't expect Alice to see the message.
+    messagesReceived[0].clear();
+    messagesReceived[1].clear();
+    const std::string password2 = "FeelsBadMan";
+    message = Json::Json(Json::Json::Type::Object);
+    message.Set("Type", "SetNickName");
+    message.Set("NickName", "Alice");
+    message.Set("Password", password2);
+    ws[1].SendText(message.ToEncoding());
+    expectedResponse = Json::Json(Json::Json::Type::Object);
+    expectedResponse.Set("Type", "Join");
+    expectedResponse.Set("NickName", "Alice");
+    EXPECT_EQ(
+        (std::vector< Json::Json >{
+            expectedResponse,
+        }),
+        messagesReceived[0]
+    );
+    messagesReceived[0].clear();
+    expectedResponse = Json::Json(Json::Json::Type::Object);
+    expectedResponse.Set("Type", "SetNickNameResult");
+    expectedResponse.Set("Success", true);
+    ASSERT_EQ(
+        (std::vector< Json::Json >{
+            expectedResponse,
+        }),
+        messagesReceived[1]
+    );
+    messagesReceived[1].clear();
+}
+
 TEST_F(ChatRoomPluginTests, Leave) {
     // Bob joins the room.
     const std::string password1 = "PogChamp";
@@ -537,6 +592,7 @@ TEST_F(ChatRoomPluginTests, Leave) {
     messagesReceived[0].clear();
 
     // Alice joins the room.
+    messagesReceived[1].clear();
     const std::string password2 = "FeelsBadMan";
     message = Json::Json(Json::Json::Type::Object);
     message.Set("Type", "SetNickName");
@@ -558,6 +614,7 @@ TEST_F(ChatRoomPluginTests, Leave) {
     ws[1].Close();
 
     // Bob peeks at the chat room member list.
+    messagesReceived[0].clear();
     message = Json::Json(Json::Json::Type::Object);
     message.Set("Type", "GetNickNames");
     ws[0].SendText(message.ToEncoding());
