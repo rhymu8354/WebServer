@@ -265,11 +265,11 @@ namespace {
     ) {
         std::string pluginsImagePath = environment.pluginsImagePath;
         if (configuration.Has("plugins-image")) {
-            pluginsImagePath = configuration["plugins-image"];
+            pluginsImagePath = (std::string)configuration["plugins-image"];
         }
         std::string pluginsRuntimePath = environment.pluginsRuntimePath;
         if (configuration.Has("plugins-runtime")) {
-            pluginsRuntimePath = configuration["plugins-runtime"];
+            pluginsRuntimePath = (std::string)configuration["plugins-runtime"];
         }
         const auto pluginsEntries = configuration["plugins"];
         const auto pluginsEnabled = configuration["plugins-enabled"];

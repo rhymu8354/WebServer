@@ -227,7 +227,7 @@ namespace {
                         break;
                     }
                 }
-                userEntry->second.nickname = message["NickName"];
+                userEntry->second.nickname = (std::string)message["NickName"];
                 if (!alreadyInRoom) {
                     Json::Json response(Json::Json::Type::Object);
                     response.Set("Type", "Join");
