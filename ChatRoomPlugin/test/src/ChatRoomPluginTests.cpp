@@ -12,6 +12,7 @@
 #include <stdio.h>
 #include <string>
 #include <SystemAbstractions/File.hpp>
+#include <SystemAbstractions/StringExtensions.hpp>
 #include <vector>
 #include <WebServer/PluginEntryPoint.hpp>
 #include <WebSockets/WebSocket.hpp>
@@ -34,6 +35,11 @@ namespace {
      * This is the path in the server at which to place the plug-in.
      */
     const std::string CHAT_ROOM_PATH = "/chat";
+
+    /**
+     * This is the number of mock clients to connect to the chat room.
+     */
+    constexpr size_t NUM_MOCK_CLIENTS = 3;
 
     /**
      * This simulates the actual web server hosting the chat room.
@@ -183,24 +189,24 @@ struct ChatRoomPluginTests
     /**
      * This is used to connect with the chat room and communicate with it.
      */
-    WebSockets::WebSocket ws;
+    WebSockets::WebSocket ws[NUM_MOCK_CLIENTS];
 
     /**
      * This is used to simulate the client side of the HTTP connection
      * between the client and the chat room.
      */
-    std::shared_ptr< MockConnection > clientConnection = std::make_shared< MockConnection >("mock-client");
+    std::shared_ptr< MockConnection > clientConnection[NUM_MOCK_CLIENTS];
 
     /**
      * This is used to simulate the server side of the HTTP connection
      * between the client and the chat room.
      */
-    std::shared_ptr< MockConnection > serverConnection = std::make_shared< MockConnection >("mock-server");
+    std::shared_ptr< MockConnection > serverConnection[NUM_MOCK_CLIENTS];
 
     /**
      * This stores all text messages received from the chat room.
      */
-    std::vector< Json::Json > messagesReceived;
+    std::vector< Json::Json > messagesReceived[NUM_MOCK_CLIENTS];
 
     // Methods
 
@@ -226,27 +232,41 @@ struct ChatRoomPluginTests
             },
             unloadDelegate
         );
-        clientConnection->sendDataDelegate = [this](
-            const std::vector< uint8_t >& data
-        ){
-            serverConnection->dataReceivedDelegate(data);
-        };
-        serverConnection->sendDataDelegate = [this](
-            const std::vector< uint8_t >& data
-        ){
-            clientConnection->dataReceivedDelegate(data);
-        };
-        ws.SetTextDelegate(
-            [this](const std::string& data){
-                messagesReceived.push_back(Json::Json::FromEncoding(data));
-            }
-        );
-        const auto openRequest = std::make_shared< Http::Request >();
-        openRequest->method = "GET";
-        (void)openRequest->target.ParseFromString("/chat");
-        ws.StartOpenAsClient(*openRequest);
-        const auto openResponse = server.registeredResourceDelegate(openRequest, serverConnection);
-        ASSERT_TRUE(ws.FinishOpenAsClient(clientConnection, *openResponse));
+        for (size_t i = 0; i < NUM_MOCK_CLIENTS; ++i) {
+             clientConnection[i] = std::make_shared< MockConnection >(
+                 SystemAbstractions::sprintf(
+                     "mock-client-%zu",
+                     i
+                 )
+             );
+             serverConnection[i] = std::make_shared< MockConnection >(
+                 SystemAbstractions::sprintf(
+                     "mock-server-%zu",
+                     i
+                 )
+             );
+            clientConnection[i]->sendDataDelegate = [this, i](
+                const std::vector< uint8_t >& data
+            ){
+                serverConnection[i]->dataReceivedDelegate(data);
+            };
+            serverConnection[i]->sendDataDelegate = [this, i](
+                const std::vector< uint8_t >& data
+            ){
+                clientConnection[i]->dataReceivedDelegate(data);
+            };
+            ws[i].SetTextDelegate(
+                [this, i](const std::string& data){
+                    messagesReceived[i].push_back(Json::Json::FromEncoding(data));
+                }
+            );
+            const auto openRequest = std::make_shared< Http::Request >();
+            openRequest->method = "GET";
+            (void)openRequest->target.ParseFromString("/chat");
+            ws[i].StartOpenAsClient(*openRequest);
+            const auto openResponse = server.registeredResourceDelegate(openRequest, serverConnection[i]);
+            ASSERT_TRUE(ws[i].FinishOpenAsClient(clientConnection[i], *openResponse));
+        }
     }
 
     virtual void TearDown() {
@@ -266,12 +286,148 @@ TEST_F(ChatRoomPluginTests, LoadAndConnect) {
 }
 
 TEST_F(ChatRoomPluginTests, SetNickName) {
-    ws.SendText("{\"Type\": \"SetNickName\", \"NickName\": \"Bob\"}");
-    ws.SendText("{\"Type\": \"GetNickNames\"}");
+    const std::string password = "PogChamp";
+    Json::Json message(Json::Json::Type::Object);
+    message.Set("Type", "SetNickName");
+    message.Set("NickName", "Bob");
+    message.Set("Password", password);
+    ws[0].SendText(message.ToEncoding());
+    Json::Json expectedResponse(Json::Json::Type::Object);
+    expectedResponse.Set("Type", "SetNickNameResult");
+    expectedResponse.Set("Success", true);
     ASSERT_EQ(
         (std::vector< Json::Json >{
-            Json::Json::FromEncoding("{\"Type\": \"NickNames\", \"NickNames\": [\"Bob\"]}"),
+            expectedResponse,
         }),
-        messagesReceived
+        messagesReceived[0]
     );
+    messagesReceived[0].clear();
+    message = Json::Json(Json::Json::Type::Object);
+    message.Set("Type", "GetNickNames");
+    ws[0].SendText(message.ToEncoding());
+    expectedResponse = Json::Json(Json::Json::Type::Object);
+    expectedResponse.Set("Type", "NickNames");
+    expectedResponse.Set("NickNames", {"Bob"});
+    ASSERT_EQ(
+        (std::vector< Json::Json >{
+            expectedResponse,
+        }),
+        messagesReceived[0]
+    );
+    messagesReceived[0].clear();
+}
+
+TEST_F(ChatRoomPluginTests, SetNickNameTwice) {
+    // Set nickname for first client.
+    const std::string password1 = "PogChamp";
+    Json::Json message(Json::Json::Type::Object);
+    message.Set("Type", "SetNickName");
+    message.Set("NickName", "Bob");
+    message.Set("Password", password1);
+    ws[0].SendText(message.ToEncoding());
+    Json::Json expectedResponse(Json::Json::Type::Object);
+    expectedResponse.Set("Type", "SetNickNameResult");
+    expectedResponse.Set("Success", true);
+    ASSERT_EQ(
+        (std::vector< Json::Json >{
+            expectedResponse,
+        }),
+        messagesReceived[0]
+    );
+    messagesReceived[0].clear();
+
+    // Set nickname for second client, trying
+    // to grab the same nickname as the first client,
+    // but with the wrong password.
+    const std::string password2 = "Poggers";
+    message = Json::Json(Json::Json::Type::Object);
+    message.Set("Type", "SetNickName");
+    message.Set("NickName", "Bob");
+    message.Set("Password", password2);
+    ws[1].SendText(message.ToEncoding());
+    expectedResponse = Json::Json(Json::Json::Type::Object);
+    expectedResponse.Set("Type", "SetNickNameResult");
+    expectedResponse.Set("Success", false);
+    ASSERT_EQ(
+        (std::vector< Json::Json >{
+            expectedResponse,
+        }),
+        messagesReceived[1]
+    );
+    messagesReceived[1].clear();
+
+    // Set nickname for third client, trying
+    // to grab the same nickname as the first client,
+    // with the correct password.  This is allowed, and
+    // a real-world use case might be the same user joining
+    // the chat room from two separate browser windows.
+    message = Json::Json(Json::Json::Type::Object);
+    message.Set("Type", "SetNickName");
+    message.Set("NickName", "Bob");
+    message.Set("Password", password1);
+    ws[2].SendText(message.ToEncoding());
+    expectedResponse = Json::Json(Json::Json::Type::Object);
+    expectedResponse.Set("Type", "SetNickNameResult");
+    expectedResponse.Set("Success", true);
+    ASSERT_EQ(
+        (std::vector< Json::Json >{
+            expectedResponse,
+        }),
+        messagesReceived[2]
+    );
+    messagesReceived[2].clear();
+
+    // Have the second client get the nickname list.
+    message = Json::Json(Json::Json::Type::Object);
+    message.Set("Type", "GetNickNames");
+    ws[1].SendText(message.ToEncoding());
+    expectedResponse = Json::Json(Json::Json::Type::Object);
+    expectedResponse.Set("Type", "NickNames");
+    expectedResponse.Set("NickNames", {"Bob"});
+    ASSERT_EQ(
+        (std::vector< Json::Json >{
+            expectedResponse,
+        }),
+        messagesReceived[1]
+    );
+    messagesReceived[1].clear();
+}
+
+TEST_F(ChatRoomPluginTests, RoomClearedAfterUnload) {
+    // Have Bob join the chat room.
+    const std::string password = "PogChamp";
+    Json::Json message(Json::Json::Type::Object);
+    message.Set("Type", "SetNickName");
+    message.Set("NickName", "Bob");
+    message.Set("Password", password);
+    ws[0].SendText(message.ToEncoding());
+    Json::Json expectedResponse(Json::Json::Type::Object);
+    expectedResponse.Set("Type", "SetNickNameResult");
+    expectedResponse.Set("Success", true);
+    ASSERT_EQ(
+        (std::vector< Json::Json >{
+            expectedResponse,
+        }),
+        messagesReceived[0]
+    );
+    messagesReceived[0].clear();
+
+    // Reload the chat room.
+    TearDown();
+    SetUp();
+
+    // Verify the nickname list is empty.
+    message = Json::Json(Json::Json::Type::Object);
+    message.Set("Type", "GetNickNames");
+    ws[0].SendText(message.ToEncoding());
+    expectedResponse = Json::Json(Json::Json::Type::Object);
+    expectedResponse.Set("Type", "NickNames");
+    expectedResponse.Set("NickNames", Json::Json(Json::Json::Type::Array));
+    ASSERT_EQ(
+        (std::vector< Json::Json >{
+            expectedResponse,
+        }),
+        messagesReceived[0]
+    );
+    messagesReceived[0].clear();
 }

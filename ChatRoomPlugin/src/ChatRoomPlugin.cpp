@@ -14,6 +14,7 @@
 #include <Json/Json.hpp>
 #include <map>
 #include <mutex>
+#include <set>
 #include <string>
 #include <SystemAbstractions/StringExtensions.hpp>
 #include <thread>
@@ -29,11 +30,23 @@
 namespace {
 
     /**
+     * This represents a registered user of the chat room.
+     */
+    struct Account {
+        /**
+         * This is the string that the user needs to present
+         * for the value of "password" when setting their nickname
+         * in order to link the user to the account.
+         */
+        std::string password;
+    };
+
+    /**
      * This represents one user in the chat room.
      */
     struct User {
         /**
-         * This is the nickname to show for the user.
+         * This is the user's nickname.
          */
         std::string nickname;
 
@@ -93,6 +106,12 @@ namespace {
          * to a new user.
          */
         unsigned int nextSessionId = 1;
+
+        /**
+         * These are the registered users of the chat room,
+         * keyed by nickname.
+         */
+        std::map< std::string, Account > accounts;
 
         // Methods
 
@@ -182,15 +201,35 @@ namespace {
                 (message["Type"] == "SetNickName")
                 && message.Has("NickName")
             ) {
-                userEntry->second.nickname = message["NickName"];
+                const std::string nickname = message["NickName"];
+                const std::string password = message["Password"];
+                Json::Json response(Json::Json::Type::Object);
+                response.Set("Type", "SetNickNameResult");
+                auto accountEntry = accounts.find(nickname);
+                if (
+                    (accountEntry == accounts.end())
+                    || (accountEntry->second.password == password)
+                ) {
+                    userEntry->second.nickname = message["NickName"];
+                    auto& account = accounts[nickname];
+                    account.password = password;
+                    response.Set("Success", true);
+                } else {
+                    response.Set("Success", false);
+                }
+                userEntry->second.ws.SendText(response.ToEncoding());
             } else if (message["Type"] == "GetNickNames") {
                 Json::Json response(Json::Json::Type::Object);
                 response.Set("Type", "NickNames");
-                Json::Json nicknames(Json::Json::Type::Array);
+                std::set< std::string > nicknameSet;
                 for (const auto& user: users) {
                     if (!user.second.nickname.empty()) {
-                        nicknames.Add(user.second.nickname);
+                        (void)nicknameSet.insert(user.second.nickname);
                     }
+                }
+                Json::Json nicknames(Json::Json::Type::Array);
+                for (const auto& nickname: nicknameSet) {
+                    nicknames.Add(nickname);
                 }
                 response.Set("NickNames", nicknames);
                 userEntry->second.ws.SendText(response.ToEncoding());
@@ -311,6 +350,7 @@ extern "C" API void LoadPlugin(
     (void)space.erase(space.begin());
 
     // Register to handle requests for the space we're serving.
+    room.Start();
     const auto unregistrationDelegate = server->RegisterResource(
         space,
         [](
@@ -324,6 +364,10 @@ extern "C" API void LoadPlugin(
     // Give back the delete to call just before this plug-in is unloaded.
     unloadDelegate = [unregistrationDelegate]{
         unregistrationDelegate();
+        room.Stop();
+        room.users.clear();
+        room.accounts.clear();
+        room.usersHaveClosed = false;
     };
 }
 
