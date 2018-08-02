@@ -244,6 +244,34 @@ namespace {
         }
 
         /**
+         * This method handles the "Tell" message from
+         * users in the chat room.
+         *
+         * @param[in] message
+         *     This is the content of the user message.
+         *
+         * @param[in] userEntry
+         *     This is the entry of the user who sent the message.
+         */
+        void Tell(
+            const Json::Json& message,
+            std::map< unsigned int, User >::iterator userEntry
+        ) {
+            const std::string tell = message["Tell"];
+            if (tell.empty()) {
+                return;
+            }
+            Json::Json response(Json::Json::Type::Object);
+            response.Set("Type", "Tell");
+            response.Set("Tell", tell);
+            response.Set("Sender", userEntry->second.nickname);
+            const auto responseEncoding = response.ToEncoding();
+            for (auto& user: users) {
+                user.second.ws.SendText(responseEncoding);
+            }
+        }
+
+        /**
          * This is called whenever a text message is received from
          * a user in the chat room.
          *
@@ -267,6 +295,8 @@ namespace {
                 SetNickName(message, userEntry);
             } else if (message["Type"] == "GetNickNames") {
                 GetNickNames(message, userEntry);
+            } else if (message["Type"] == "Tell") {
+                Tell(message, userEntry);
             }
         }
 
