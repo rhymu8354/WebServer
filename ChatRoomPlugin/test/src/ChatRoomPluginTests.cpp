@@ -7,8 +7,10 @@
  * © 2018 by Richard Walters
  */
 
+#include <condition_variable>
 #include <gtest/gtest.h>
 #include <Json/Json.hpp>
+#include <mutex>
 #include <stdio.h>
 #include <string>
 #include <SystemAbstractions/File.hpp>
@@ -187,9 +189,27 @@ struct ChatRoomPluginTests
     std::function< void() > unloadDelegate;
 
     /**
+     * This is used to synchronize access to the wsClosed, messagesReceived,
+     * and wsWaitCondition variables.
+     */
+    std::mutex mutex;
+
+    /**
+     * This is used to wait for, or signal, the condition of one or
+     * more messagesReceived updates or wsClosed flags being set.
+     */
+    std::condition_variable waitCondition;
+
+    /**
      * This is used to connect with the chat room and communicate with it.
      */
     WebSockets::WebSocket ws[NUM_MOCK_CLIENTS];
+
+    /**
+     * These flags indicate whether or not the corresponding WebSockets
+     * have been closed.
+     */
+    bool wsClosed[NUM_MOCK_CLIENTS];
 
     /**
      * This is used to simulate the client side of the HTTP connection
@@ -255,9 +275,22 @@ struct ChatRoomPluginTests
             ){
                 clientConnection[i]->dataReceivedDelegate(data);
             };
+            wsClosed[i] = false;
             ws[i].SetTextDelegate(
                 [this, i](const std::string& data){
+                    std::lock_guard< decltype(mutex) > lock(mutex);
                     messagesReceived[i].push_back(Json::Json::FromEncoding(data));
+                    waitCondition.notify_all();
+                }
+            );
+            ws[i].SetCloseDelegate(
+                [this, i](
+                    unsigned int code,
+                    const std::string& reason
+                ){
+                    std::lock_guard< decltype(mutex) > lock(mutex);
+                    wsClosed[i] = true;
+                    waitCondition.notify_all();
                 }
             );
             const auto openRequest = std::make_shared< Http::Request >();
@@ -611,21 +644,32 @@ TEST_F(ChatRoomPluginTests, Leave) {
     messagesReceived[1].clear();
 
     // Alice leaves the room.
+    messagesReceived[0].clear();
     ws[1].Close();
+    {
+        std::unique_lock< decltype(mutex) > lock(mutex);
+        ASSERT_TRUE(
+            waitCondition.wait_for(
+                lock,
+                std::chrono::seconds(1),
+                [this]{ return wsClosed[1] && !messagesReceived[0].empty(); }
+            )
+        );
+    }
 
     // Bob peeks at the chat room member list.
-    messagesReceived[0].clear();
     message = Json::Json(Json::Json::Type::Object);
     message.Set("Type", "GetNickNames");
     ws[0].SendText(message.ToEncoding());
+    std::vector< Json::Json > expectedResponses;
+    expectedResponse = Json::Json(Json::Json::Type::Object);
+    expectedResponse.Set("Type", "Leave");
+    expectedResponse.Set("NickName", "Alice");
+    expectedResponses.push_back(expectedResponse);
     expectedResponse = Json::Json(Json::Json::Type::Object);
     expectedResponse.Set("Type", "NickNames");
     expectedResponse.Set("NickNames", {"Bob"});
-    ASSERT_EQ(
-        (std::vector< Json::Json >{
-            expectedResponse,
-        }),
-        messagesReceived[0]
-    );
+    expectedResponses.push_back(expectedResponse);
+    ASSERT_EQ(expectedResponses, messagesReceived[0]);
     messagesReceived[0].clear();
 }

@@ -163,8 +163,25 @@ namespace {
                         if (userEntry->second.open) {
                             ++userEntry;
                         } else {
+                            const auto nickname = userEntry->second.nickname;
                             closedUsers.push_back(std::move(userEntry->second));
                             userEntry = users.erase(userEntry);
+                            bool stillInRoom = false;
+                            for (const auto& user: users) {
+                                if (user.second.nickname == nickname) {
+                                    stillInRoom = true;
+                                    break;
+                                }
+                            }
+                            if (!stillInRoom) {
+                                Json::Json response(Json::Json::Type::Object);
+                                response.Set("Type", "Leave");
+                                response.Set("NickName", nickname);
+                                const auto responseEncoding = response.ToEncoding();
+                                for (auto& user: users) {
+                                    user.second.ws.SendText(responseEncoding);
+                                }
+                            }
                         }
                     }
                     usersHaveClosed = false;
@@ -324,13 +341,24 @@ namespace {
          *
          * @param[in] sessionId
          *     This is the session ID of the user who left the room.
+         *
+         * @param[in] code
+         *     This is the WebSocket close status code.
+         *
+         * @param[in] reason
+         *     This is the payload data from the WebSocket close.
          */
-        void RemoveUser(unsigned int sessionId) {
+        void RemoveUser(
+            unsigned int sessionId,
+            unsigned int code,
+            const std::string& reason
+        ) {
             std::lock_guard< decltype(mutex) > lock(mutex);
             const auto userEntry = users.find(sessionId);
             if (userEntry == users.end()) {
                 return;
             }
+            userEntry->second.ws.Close(code, reason);
             userEntry->second.open = false;
             usersHaveClosed = true;
             workerWakeCondition.notify_all();
@@ -365,7 +393,7 @@ namespace {
                     unsigned int code,
                     const std::string& reason
                 ){
-                    RemoveUser(sessionId);
+                    RemoveUser(sessionId, code, reason);
                 }
             );
             if (
