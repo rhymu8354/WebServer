@@ -5,6 +5,8 @@
 cmake_minimum_required(VERSION 3.8)
 set(This ChatRoomPluginTests)
 
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY $<TARGET_FILE_DIR:ChatRoomPlugin>)
+
 set(Sources
     src/ChatRoomPluginTests.cpp
 )
@@ -23,10 +25,6 @@ target_link_libraries(${This} PUBLIC
     Json
     Uri
     WebSockets
-)
-
-add_custom_command(TARGET ${This} POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:ChatRoomPlugin> $<TARGET_FILE_DIR:${This}>
 )
 
 add_test(
