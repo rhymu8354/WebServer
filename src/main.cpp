@@ -273,12 +273,15 @@ namespace {
         }
         const auto pluginsEntries = configuration["plugins"];
         const auto pluginsEnabled = configuration["plugins-enabled"];
-        std::string moduleExtension;
+        std::string modulePrefix, moduleExtension;
 #if _WIN32
+        modulePrefix = "";
         moduleExtension = ".dll";
 #elif defined(APPLE)
+        modulePrefix = "lib";
         moduleExtension = ".dylib";
 #else
+        modulePrefix = "lib";
         moduleExtension = ".so";
 #endif
         std::map< std::string, std::shared_ptr< Plugin > > plugins;
@@ -288,8 +291,8 @@ namespace {
                 const auto pluginEntry = pluginsEntries[pluginName];
                 const std::string pluginModule = pluginEntry["module"];
                 const auto plugin = plugins[pluginName] = std::make_shared< Plugin >(
-                    pluginsImagePath + "/" + pluginModule + moduleExtension,
-                    pluginsRuntimePath + "/" + pluginModule + moduleExtension
+                    pluginsImagePath + "/" + modulePrefix + pluginModule + moduleExtension,
+                    pluginsRuntimePath + "/" + modulePrefix + pluginModule + moduleExtension
                 );
                 plugin->moduleName = pluginModule;
                 plugin->configuration = pluginEntry["configuration"];
