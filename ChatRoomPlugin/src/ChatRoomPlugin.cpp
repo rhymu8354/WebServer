@@ -178,6 +178,72 @@ namespace {
         }
 
         /**
+         * This method handles the "SetNickName" message from
+         * users in the chat room.
+         *
+         * @param[in] message
+         *     This is the content of the user message.
+         *
+         * @param[in] userEntry
+         *     This is the entry of the user who sent the message.
+         */
+        void SetNickName(
+            const Json::Json& message,
+            std::map< unsigned int, User >::iterator userEntry
+        ) {
+            const std::string nickname = message["NickName"];
+            const std::string password = message["Password"];
+            Json::Json response(Json::Json::Type::Object);
+            response.Set("Type", "SetNickNameResult");
+            auto accountEntry = accounts.find(nickname);
+            if (
+                !nickname.empty()
+                && (
+                    (accountEntry == accounts.end())
+                    || (accountEntry->second.password == password)
+                )
+            ) {
+                userEntry->second.nickname = message["NickName"];
+                auto& account = accounts[nickname];
+                account.password = password;
+                response.Set("Success", true);
+            } else {
+                response.Set("Success", false);
+            }
+            userEntry->second.ws.SendText(response.ToEncoding());
+        }
+
+        /**
+         * This method handles the "GetNickNames" message from
+         * users in the chat room.
+         *
+         * @param[in] message
+         *     This is the content of the user message.
+         *
+         * @param[in] userEntry
+         *     This is the entry of the user who sent the message.
+         */
+        void GetNickNames(
+            const Json::Json& message,
+            std::map< unsigned int, User >::iterator userEntry
+        ) {
+            Json::Json response(Json::Json::Type::Object);
+            response.Set("Type", "NickNames");
+            std::set< std::string > nicknameSet;
+            for (const auto& user: users) {
+                if (!user.second.nickname.empty()) {
+                    (void)nicknameSet.insert(user.second.nickname);
+                }
+            }
+            Json::Json nicknames(Json::Json::Type::Array);
+            for (const auto& nickname: nicknameSet) {
+                nicknames.Add(nickname);
+            }
+            response.Set("NickNames", nicknames);
+            userEntry->second.ws.SendText(response.ToEncoding());
+        }
+
+        /**
          * This is called whenever a text message is received from
          * a user in the chat room.
          *
@@ -197,42 +263,10 @@ namespace {
                 return;
             }
             const auto message = Json::Json::FromEncoding(data);
-            if (
-                (message["Type"] == "SetNickName")
-                && message.Has("NickName")
-            ) {
-                const std::string nickname = message["NickName"];
-                const std::string password = message["Password"];
-                Json::Json response(Json::Json::Type::Object);
-                response.Set("Type", "SetNickNameResult");
-                auto accountEntry = accounts.find(nickname);
-                if (
-                    (accountEntry == accounts.end())
-                    || (accountEntry->second.password == password)
-                ) {
-                    userEntry->second.nickname = message["NickName"];
-                    auto& account = accounts[nickname];
-                    account.password = password;
-                    response.Set("Success", true);
-                } else {
-                    response.Set("Success", false);
-                }
-                userEntry->second.ws.SendText(response.ToEncoding());
+            if (message["Type"] == "SetNickName") {
+                SetNickName(message, userEntry);
             } else if (message["Type"] == "GetNickNames") {
-                Json::Json response(Json::Json::Type::Object);
-                response.Set("Type", "NickNames");
-                std::set< std::string > nicknameSet;
-                for (const auto& user: users) {
-                    if (!user.second.nickname.empty()) {
-                        (void)nicknameSet.insert(user.second.nickname);
-                    }
-                }
-                Json::Json nicknames(Json::Json::Type::Array);
-                for (const auto& nickname: nicknameSet) {
-                    nicknames.Add(nickname);
-                }
-                response.Set("NickNames", nicknames);
-                userEntry->second.ws.SendText(response.ToEncoding());
+                GetNickNames(message, userEntry);
             }
         }
 
