@@ -23,4 +23,10 @@ target_link_libraries(${This} PUBLIC
     Uri
 )
 
+if(UNIX)
+    target_link_libraries(${This} PRIVATE
+        -static-libstdc++
+    )
+endif(UNIX)
+
 add_subdirectory(test)

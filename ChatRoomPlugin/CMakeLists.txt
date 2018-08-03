@@ -24,4 +24,10 @@ target_link_libraries(${This} PUBLIC
     WebSockets
 )
 
+if(UNIX)
+    target_link_libraries(${This} PRIVATE
+        -static-libstdc++
+    )
+endif(UNIX)
+
 add_subdirectory(test)

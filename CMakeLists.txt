@@ -33,5 +33,11 @@ target_link_libraries(${This} PUBLIC
     SystemAbstractions
 )
 
+if(UNIX)
+    target_link_libraries(${This} PRIVATE
+        -static-libstdc++
+    )
+endif(UNIX)
+
 add_subdirectory(ChatRoomPlugin)
 add_subdirectory(StaticContentPlugin)
