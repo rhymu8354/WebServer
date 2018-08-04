@@ -366,6 +366,12 @@ TEST_F(ChatRoomPluginTests, SetNickName) {
         }),
         messagesReceived[0]
     );
+    ASSERT_EQ(
+        (std::vector< std::string >{
+            "Session #1[1]: Nickname changed from '' to 'Bob'",
+        }),
+        diagnosticMessages
+    );
     messagesReceived[0].clear();
     message = Json::Json(Json::Json::Type::Object);
     message.Set("Type", "GetNickNames");
@@ -677,6 +683,7 @@ TEST_F(ChatRoomPluginTests, Leave) {
 
     // Alice leaves the room.
     messagesReceived[0].clear();
+    diagnosticMessages.clear();
     ws[1].Close();
     {
         std::unique_lock< decltype(mutex) > lock(mutex);
