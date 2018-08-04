@@ -134,6 +134,11 @@ namespace {
          */
         std::string peerId;
 
+        /**
+         * This is used to synchronize access to this object's state.
+         */
+        std::recursive_mutex mutex;
+
         // Methods
 
         /**
@@ -144,6 +149,11 @@ namespace {
         {
         }
 
+        void ReceiveData(const std::vector< uint8_t >& data) {
+            std::lock_guard< decltype(mutex) > lock(mutex);
+            dataReceivedDelegate(data);
+        }
+
         // Http::Connection
 
         virtual std::string GetPeerId() override {
@@ -151,14 +161,17 @@ namespace {
         }
 
         virtual void SetDataReceivedDelegate(DataReceivedDelegate newDataReceivedDelegate) override {
+            std::lock_guard< decltype(mutex) > lock(mutex);
             dataReceivedDelegate = newDataReceivedDelegate;
         }
 
         virtual void SetBrokenDelegate(BrokenDelegate newBrokenDelegate) override {
+            std::lock_guard< decltype(mutex) > lock(mutex);
             brokenDelegate = newBrokenDelegate;
         }
 
         virtual void SendData(const std::vector< uint8_t >& data) override {
+            std::lock_guard< decltype(mutex) > lock(mutex);
             sendDataDelegate(data);
         }
 
@@ -253,12 +266,12 @@ struct ChatRoomPluginTests
         clientConnection[i]->sendDataDelegate = [this, i](
             const std::vector< uint8_t >& data
         ){
-            serverConnection[i]->dataReceivedDelegate(data);
+            serverConnection[i]->ReceiveData(data);
         };
         serverConnection[i]->sendDataDelegate = [this, i](
             const std::vector< uint8_t >& data
         ){
-            clientConnection[i]->dataReceivedDelegate(data);
+            clientConnection[i]->ReceiveData(data);
         };
         wsClosed[i] = false;
         ws[i].SetTextDelegate(
