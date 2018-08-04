@@ -241,6 +241,12 @@ struct ChatRoomPluginTests
      */
     std::vector< Json::Json > messagesReceived[NUM_MOCK_CLIENTS];
 
+    /**
+     * These are the diagnostic messages that have been
+     * received from the unit under test.
+     */
+    std::vector< std::string > diagnosticMessages;
+
     // Methods
 
     /**
@@ -301,16 +307,18 @@ struct ChatRoomPluginTests
         LoadPlugin(
             &server,
             config,
-            [](
+            [this](
                 std::string senderName,
                 size_t level,
                 std::string message
             ){
-                printf(
-                    "[%s:%zu] %s\n",
-                    senderName.c_str(),
-                    level,
-                    message.c_str()
+                diagnosticMessages.push_back(
+                    SystemAbstractions::sprintf(
+                        "%s[%zu]: %s",
+                        senderName.c_str(),
+                        level,
+                        message.c_str()
+                    )
                 );
             },
             unloadDelegate
@@ -680,6 +688,13 @@ TEST_F(ChatRoomPluginTests, Leave) {
             )
         );
     }
+    ASSERT_EQ(
+        (std::vector< std::string >{
+            "Session #2[1]: Connection to mock-server-1 closed ()",
+            "Session #2[1]: Connection to mock-server-1 closed by peer",
+        }),
+        diagnosticMessages
+    );
 
     // Bob peeks at the chat room member list.
     message = Json::Json(Json::Json::Type::Object);
