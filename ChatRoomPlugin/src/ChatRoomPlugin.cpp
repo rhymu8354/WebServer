@@ -413,6 +413,9 @@ namespace {
                 )
             ) {
                 (void)users.erase(sessionId);
+                response->statusCode = 200;
+                response->headers.SetHeader("Content-Type", "text/plain");
+                response->body = "Try again, but next time use a WebSocket.  Kthxbye!";
             }
             return response;
         }

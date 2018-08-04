@@ -752,3 +752,23 @@ TEST_F(ChatRoomPluginTests, SetNickNameInTrailer) {
     );
     messagesReceived[0].clear();
 }
+
+TEST_F(ChatRoomPluginTests, ConnectionNotUpgraded) {
+    const auto connection = std::make_shared< MockConnection >("mock-client");
+    std::string responseText;
+    connection->sendDataDelegate = [this, &responseText](
+        const std::vector< uint8_t >& data
+    ){
+        responseText += std::string(
+            data.begin(),
+            data.end()
+        );
+    };
+    const auto request = std::make_shared< Http::Request >();
+    request->method = "GET";
+    (void)request->target.ParseFromString("");
+    const auto response = server.registeredResourceDelegate(request, connection, "");
+    ASSERT_EQ(200, response->statusCode);
+    ASSERT_EQ("text/plain", response->headers.GetHeaderValue("Content-Type"));
+    ASSERT_EQ("Try again, but next time use a WebSocket.  Kthxbye!", response->body);
+}
