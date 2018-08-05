@@ -230,54 +230,108 @@ namespace {
             const Json::Json& message,
             std::map< unsigned int, User >::iterator userEntry
         ) {
-            const std::string nickname = message["NickName"];
+            const auto oldNickname = userEntry->second.nickname;
+            const std::string newNickname = message["NickName"];
             const std::string password = message["Password"];
-            Json::Json response(Json::Json::Type::Object);
-            response.Set("Type", "SetNickNameResult");
-            auto accountEntry = accounts.find(nickname);
-            if (
-                !nickname.empty()
-                && (
-                    (accountEntry == accounts.end())
-                    || (accountEntry->second.password == password)
-                )
-            ) {
-                bool alreadyInRoom = false;
-                for (const auto& user: users) {
-                    if (user.second.nickname == nickname) {
-                        alreadyInRoom = true;
-                        break;
-                    }
-                }
-                const auto oldNickname = userEntry->second.nickname;
-                userEntry->second.nickname = (std::string)message["NickName"];
-                if (!alreadyInRoom) {
-                    Json::Json response(Json::Json::Type::Object);
-                    response.Set("Type", "Join");
-                    response.Set("NickName", nickname);
-                    const auto responseEncoding = response.ToEncoding();
-                    for (auto& user: users) {
-                        if (user.second.nickname != nickname) {
-                            user.second.ws->SendText(responseEncoding);
+            Json::Json setNickNameResult(Json::Json::Type::Object);
+            setNickNameResult.Set("Type", "SetNickNameResult");
+            auto accountEntry = accounts.find(newNickname);
+            if (newNickname.empty()) {
+                bool oldNickNameElsewhereInRoom = false;
+                for (auto& user: users) {
+                    if (!oldNickname.empty()) {
+                        if (
+                            (user.first != userEntry->first)
+                            && (user.second.nickname == oldNickname)
+                        ) {
+                            oldNickNameElsewhereInRoom = true;
+                            break;
                         }
                     }
                 }
-                auto& account = accounts[nickname];
+                setNickNameResult.Set("Success", true);
+                if (!oldNickname.empty()) {
+                    diagnosticMessageDelegate(
+                        userEntry->second.diagnosticsSenderName,
+                        1,
+                        SystemAbstractions::sprintf(
+                            "Nickname changed from '%s' to '%s'",
+                            oldNickname.c_str(),
+                            newNickname.c_str()
+                        )
+                    );
+                }
+                if (
+                    !oldNickname.empty()
+                    && !oldNickNameElsewhereInRoom
+                ) {
+                    Json::Json response(Json::Json::Type::Object);
+                    response.Set("Type", "Leave");
+                    response.Set("NickName", oldNickname);
+                    const auto responseEncoding = response.ToEncoding();
+                    for (const auto& user: users) {
+                        user.second.ws->SendText(responseEncoding);
+                    }
+                }
+            } else if (
+                (accountEntry == accounts.end())
+                || (accountEntry->second.password == password)
+            ) {
+                bool oldNickNameElsewhereInRoom = false;
+                bool newNickNameAlreadyInRoom = false;
+                for (auto& user: users) {
+                    if (user.second.nickname == newNickname) {
+                        newNickNameAlreadyInRoom = true;
+                    }
+                    if (!oldNickname.empty()) {
+                        if (
+                            (user.first != userEntry->first)
+                            && (user.second.nickname == oldNickname)
+                        ) {
+                            oldNickNameElsewhereInRoom = true;
+                        }
+                    }
+                }
+                userEntry->second.nickname = newNickname;
+                if (
+                    !oldNickname.empty()
+                    && !oldNickNameElsewhereInRoom
+                ) {
+                    Json::Json response(Json::Json::Type::Object);
+                    response.Set("Type", "Leave");
+                    response.Set("NickName", oldNickname);
+                    const auto responseEncoding = response.ToEncoding();
+                    for (const auto& user: users) {
+                        user.second.ws->SendText(responseEncoding);
+                    }
+                }
+                if (!newNickNameAlreadyInRoom) {
+                    Json::Json response(Json::Json::Type::Object);
+                    response.Set("Type", "Join");
+                    response.Set("NickName", newNickname);
+                    const auto responseEncoding = response.ToEncoding();
+                    for (auto& user: users) {
+                        user.second.ws->SendText(responseEncoding);
+                    }
+                }
+                auto& account = accounts[newNickname];
                 account.password = password;
-                response.Set("Success", true);
-                diagnosticMessageDelegate(
-                    userEntry->second.diagnosticsSenderName,
-                    1,
-                    SystemAbstractions::sprintf(
-                        "Nickname changed from '%s' to '%s'",
-                        oldNickname.c_str(),
-                        nickname.c_str()
-                    )
-                );
+                setNickNameResult.Set("Success", true);
+                if (oldNickname != newNickname) {
+                    diagnosticMessageDelegate(
+                        userEntry->second.diagnosticsSenderName,
+                        1,
+                        SystemAbstractions::sprintf(
+                            "Nickname changed from '%s' to '%s'",
+                            oldNickname.c_str(),
+                            newNickname.c_str()
+                        )
+                    );
+                }
             } else {
-                response.Set("Success", false);
+                setNickNameResult.Set("Success", false);
             }
-            userEntry->second.ws->SendText(response.ToEncoding());
+            userEntry->second.ws->SendText(setNickNameResult.ToEncoding());
         }
 
         /**

@@ -358,11 +358,15 @@ TEST_F(ChatRoomPluginTests, SetNickName) {
     message.Set("Password", password);
     ws[0].SendText(message.ToEncoding());
     Json::Json expectedResponse(Json::Json::Type::Object);
-    expectedResponse.Set("Type", "SetNickNameResult");
-    expectedResponse.Set("Success", true);
+    expectedResponse.Set("Type", "Join");
+    expectedResponse.Set("NickName", "Bob");
+    Json::Json expectedResponse2(Json::Json::Type::Object);
+    expectedResponse2.Set("Type", "SetNickNameResult");
+    expectedResponse2.Set("Success", true);
     ASSERT_EQ(
         (std::vector< Json::Json >{
             expectedResponse,
+            expectedResponse2,
         }),
         messagesReceived[0]
     );
@@ -397,11 +401,15 @@ TEST_F(ChatRoomPluginTests, SetNickNameTwice) {
     message.Set("Password", password1);
     ws[0].SendText(message.ToEncoding());
     Json::Json expectedResponse(Json::Json::Type::Object);
-    expectedResponse.Set("Type", "SetNickNameResult");
-    expectedResponse.Set("Success", true);
+    expectedResponse.Set("Type", "Join");
+    expectedResponse.Set("NickName", "Bob");
+    Json::Json expectedResponse2(Json::Json::Type::Object);
+    expectedResponse2.Set("Type", "SetNickNameResult");
+    expectedResponse2.Set("Success", true);
     ASSERT_EQ(
         (std::vector< Json::Json >{
             expectedResponse,
+            expectedResponse2,
         }),
         messagesReceived[0]
     );
@@ -475,11 +483,15 @@ TEST_F(ChatRoomPluginTests, RoomClearedAfterUnload) {
     message.Set("Password", password);
     ws[0].SendText(message.ToEncoding());
     Json::Json expectedResponse(Json::Json::Type::Object);
-    expectedResponse.Set("Type", "SetNickNameResult");
-    expectedResponse.Set("Success", true);
+    expectedResponse.Set("Type", "Join");
+    expectedResponse.Set("NickName", "Bob");
+    Json::Json expectedResponse2(Json::Json::Type::Object);
+    expectedResponse2.Set("Type", "SetNickNameResult");
+    expectedResponse2.Set("Success", true);
     ASSERT_EQ(
         (std::vector< Json::Json >{
             expectedResponse,
+            expectedResponse2,
         }),
         messagesReceived[0]
     );
@@ -514,11 +526,15 @@ TEST_F(ChatRoomPluginTests, Tell) {
     message.Set("Password", password1);
     ws[0].SendText(message.ToEncoding());
     Json::Json expectedResponse(Json::Json::Type::Object);
-    expectedResponse.Set("Type", "SetNickNameResult");
-    expectedResponse.Set("Success", true);
+    expectedResponse.Set("Type", "Join");
+    expectedResponse.Set("NickName", "Bob");
+    Json::Json expectedResponse2(Json::Json::Type::Object);
+    expectedResponse2.Set("Type", "SetNickNameResult");
+    expectedResponse2.Set("Success", true);
     ASSERT_EQ(
         (std::vector< Json::Json >{
             expectedResponse,
+            expectedResponse2,
         }),
         messagesReceived[0]
     );
@@ -533,11 +549,15 @@ TEST_F(ChatRoomPluginTests, Tell) {
     message.Set("Password", password2);
     ws[1].SendText(message.ToEncoding());
     expectedResponse = Json::Json(Json::Json::Type::Object);
-    expectedResponse.Set("Type", "SetNickNameResult");
-    expectedResponse.Set("Success", true);
+    expectedResponse.Set("Type", "Join");
+    expectedResponse.Set("NickName", "Alice");
+    expectedResponse2 = Json::Json(Json::Json::Type::Object);
+    expectedResponse2.Set("Type", "SetNickNameResult");
+    expectedResponse2.Set("Success", true);
     ASSERT_EQ(
         (std::vector< Json::Json >{
             expectedResponse,
+            expectedResponse2,
         }),
         messagesReceived[1]
     );
@@ -601,18 +621,22 @@ TEST_F(ChatRoomPluginTests, Join) {
     message.Set("Password", password1);
     ws[0].SendText(message.ToEncoding());
     Json::Json expectedResponse(Json::Json::Type::Object);
-    expectedResponse.Set("Type", "SetNickNameResult");
-    expectedResponse.Set("Success", true);
+    expectedResponse.Set("Type", "Join");
+    expectedResponse.Set("NickName", "Bob");
+    Json::Json expectedResponse2(Json::Json::Type::Object);
+    expectedResponse2.Set("Type", "SetNickNameResult");
+    expectedResponse2.Set("Success", true);
     ASSERT_EQ(
         (std::vector< Json::Json >{
             expectedResponse,
+            expectedResponse2,
         }),
         messagesReceived[0]
     );
     messagesReceived[0].clear();
 
-    // Alice joins the room.  Expect Bob to see a message
-    // about Alice joining, but don't expect Alice to see the message.
+    // Alice joins the room.  Expect both Alice and Bob to see a message
+    // about Alice joining.
     messagesReceived[0].clear();
     messagesReceived[1].clear();
     const std::string password2 = "FeelsBadMan";
@@ -631,12 +655,13 @@ TEST_F(ChatRoomPluginTests, Join) {
         messagesReceived[0]
     );
     messagesReceived[0].clear();
-    expectedResponse = Json::Json(Json::Json::Type::Object);
-    expectedResponse.Set("Type", "SetNickNameResult");
-    expectedResponse.Set("Success", true);
+    expectedResponse2 = Json::Json(Json::Json::Type::Object);
+    expectedResponse2.Set("Type", "SetNickNameResult");
+    expectedResponse2.Set("Success", true);
     ASSERT_EQ(
         (std::vector< Json::Json >{
             expectedResponse,
+            expectedResponse2,
         }),
         messagesReceived[1]
     );
@@ -652,11 +677,15 @@ TEST_F(ChatRoomPluginTests, Leave) {
     message.Set("Password", password1);
     ws[0].SendText(message.ToEncoding());
     Json::Json expectedResponse(Json::Json::Type::Object);
-    expectedResponse.Set("Type", "SetNickNameResult");
-    expectedResponse.Set("Success", true);
+    expectedResponse.Set("Type", "Join");
+    expectedResponse.Set("NickName", "Bob");
+    Json::Json expectedResponse2(Json::Json::Type::Object);
+    expectedResponse2.Set("Type", "SetNickNameResult");
+    expectedResponse2.Set("Success", true);
     ASSERT_EQ(
         (std::vector< Json::Json >{
             expectedResponse,
+            expectedResponse2,
         }),
         messagesReceived[0]
     );
@@ -671,11 +700,15 @@ TEST_F(ChatRoomPluginTests, Leave) {
     message.Set("Password", password2);
     ws[1].SendText(message.ToEncoding());
     expectedResponse = Json::Json(Json::Json::Type::Object);
-    expectedResponse.Set("Type", "SetNickNameResult");
-    expectedResponse.Set("Success", true);
+    expectedResponse.Set("Type", "Join");
+    expectedResponse.Set("NickName", "Alice");
+    expectedResponse2 = Json::Json(Json::Json::Type::Object);
+    expectedResponse2.Set("Type", "SetNickNameResult");
+    expectedResponse2.Set("Success", true);
     ASSERT_EQ(
         (std::vector< Json::Json >{
             expectedResponse,
+            expectedResponse2,
         }),
         messagesReceived[1]
     );
@@ -764,11 +797,15 @@ TEST_F(ChatRoomPluginTests, SetNickNameInTrailer) {
         )
     );
     Json::Json expectedResponse(Json::Json::Type::Object);
-    expectedResponse.Set("Type", "SetNickNameResult");
-    expectedResponse.Set("Success", true);
+    expectedResponse.Set("Type", "Join");
+    expectedResponse.Set("NickName", "Bob");
+    Json::Json expectedResponse2(Json::Json::Type::Object);
+    expectedResponse2.Set("Type", "SetNickNameResult");
+    expectedResponse2.Set("Success", true);
     ASSERT_EQ(
         (std::vector< Json::Json >{
             expectedResponse,
+            expectedResponse2,
         }),
         messagesReceived[0]
     );
@@ -806,4 +843,449 @@ TEST_F(ChatRoomPluginTests, ConnectionNotUpgraded) {
     ASSERT_EQ(200, response->statusCode);
     ASSERT_EQ("text/plain", response->headers.GetHeaderValue("Content-Type"));
     ASSERT_EQ("Try again, but next time use a WebSocket.  Kthxbye!", response->body);
+}
+
+TEST_F(ChatRoomPluginTests, ChangeNickNameTwoConnectionNonLurkerToNonLurkerNotAlreadyInRoom) {
+    // Set nickname to "Bob" initially on two separate connections.
+    const std::string password = "PogChamp";
+    Json::Json message(Json::Json::Type::Object);
+    message.Set("Type", "SetNickName");
+    message.Set("NickName", "Bob");
+    message.Set("Password", password);
+    ws[0].SendText(message.ToEncoding());
+    ws[2].SendText(message.ToEncoding());
+
+    // Change nickname to "Bobby".
+    diagnosticMessages.clear();
+    messagesReceived[0].clear();
+    messagesReceived[1].clear();
+    messagesReceived[2].clear();
+    message = Json::Json(Json::Json::Type::Object);
+    message.Set("Type", "SetNickName");
+    message.Set("NickName", "Bobby");
+    message.Set("Password", password);
+    ws[0].SendText(message.ToEncoding());
+    Json::Json expectedResponse(Json::Json::Type::Object);
+    expectedResponse.Set("Type", "SetNickNameResult");
+    expectedResponse.Set("Success", true);
+    Json::Json expectedResponse2(Json::Json::Type::Object);
+    expectedResponse2.Set("Type", "Join");
+    expectedResponse2.Set("NickName", "Bobby");
+    EXPECT_EQ(
+        (std::vector< Json::Json >{
+            expectedResponse2,
+            expectedResponse,
+        }),
+        messagesReceived[0]
+    );
+    EXPECT_EQ(
+        (std::vector< Json::Json >{
+            expectedResponse2,
+        }),
+        messagesReceived[1]
+    );
+    EXPECT_EQ(
+        (std::vector< Json::Json >{
+            expectedResponse2,
+        }),
+        messagesReceived[2]
+    );
+    EXPECT_EQ(
+        (std::vector< std::string >{
+            "Session #1[1]: Nickname changed from 'Bob' to 'Bobby'",
+        }),
+        diagnosticMessages
+    );
+
+    // Verify nickname of "Bob" is changed only for one connection,
+    // not the other.
+    messagesReceived[1].clear();
+    message = Json::Json(Json::Json::Type::Object);
+    message.Set("Type", "Tell");
+    message.Set("Tell", "Howdy");
+    ws[0].SendText(message.ToEncoding());
+    message = Json::Json(Json::Json::Type::Object);
+    message.Set("Type", "Tell");
+    message.Set("Tell", "HeyGuys");
+    ws[2].SendText(message.ToEncoding());
+    expectedResponse = Json::Json(Json::Json::Type::Object);
+    expectedResponse.Set("Type", "Tell");
+    expectedResponse.Set("Sender", "Bobby");
+    expectedResponse.Set("Tell", "Howdy");
+    expectedResponse2 = Json::Json(Json::Json::Type::Object);
+    expectedResponse2.Set("Type", "Tell");
+    expectedResponse2.Set("Sender", "Bob");
+    expectedResponse2.Set("Tell", "HeyGuys");
+    EXPECT_EQ(
+        (std::vector< Json::Json >{
+            expectedResponse,
+            expectedResponse2,
+        }),
+        messagesReceived[1]
+    );
+}
+
+TEST_F(ChatRoomPluginTests, ChangeNickNameSingleConnectionNonLurkerToNonLurkerNotAlreadyInRoom) {
+    // Set nickname to "Bob" initially on one connection.
+    const std::string password = "PogChamp";
+    Json::Json message(Json::Json::Type::Object);
+    message.Set("Type", "SetNickName");
+    message.Set("NickName", "Bob");
+    message.Set("Password", password);
+    ws[0].SendText(message.ToEncoding());
+
+    // Change nickname to "Bobby".
+    diagnosticMessages.clear();
+    messagesReceived[0].clear();
+    messagesReceived[1].clear();
+    messagesReceived[2].clear();
+    message = Json::Json(Json::Json::Type::Object);
+    message.Set("Type", "SetNickName");
+    message.Set("NickName", "Bobby");
+    message.Set("Password", password);
+    ws[0].SendText(message.ToEncoding());
+    Json::Json expectedResponse1(Json::Json::Type::Object);
+    expectedResponse1.Set("Type", "Leave");
+    expectedResponse1.Set("NickName", "Bob");
+    Json::Json expectedResponse2(Json::Json::Type::Object);
+    expectedResponse2.Set("Type", "Join");
+    expectedResponse2.Set("NickName", "Bobby");
+    Json::Json expectedResponse3(Json::Json::Type::Object);
+    expectedResponse3.Set("Type", "SetNickNameResult");
+    expectedResponse3.Set("Success", true);
+    EXPECT_EQ(
+        (std::vector< Json::Json >{
+            expectedResponse1,
+            expectedResponse2,
+            expectedResponse3,
+        }),
+        messagesReceived[0]
+    );
+    EXPECT_EQ(
+        (std::vector< Json::Json >{
+            expectedResponse1,
+            expectedResponse2,
+        }),
+        messagesReceived[1]
+    );
+    EXPECT_EQ(
+        (std::vector< Json::Json >{
+            expectedResponse1,
+            expectedResponse2,
+        }),
+        messagesReceived[2]
+    );
+    EXPECT_EQ(
+        (std::vector< std::string >{
+            "Session #1[1]: Nickname changed from 'Bob' to 'Bobby'",
+        }),
+        diagnosticMessages
+    );
+
+    // Verify nickname of "Bob" really did change to "Bobby".
+    messagesReceived[1].clear();
+    message = Json::Json(Json::Json::Type::Object);
+    message.Set("Type", "Tell");
+    message.Set("Tell", "Howdy");
+    ws[0].SendText(message.ToEncoding());
+    expectedResponse1 = Json::Json(Json::Json::Type::Object);
+    expectedResponse1.Set("Type", "Tell");
+    expectedResponse1.Set("Sender", "Bobby");
+    expectedResponse1.Set("Tell", "Howdy");
+    EXPECT_EQ(
+        (std::vector< Json::Json >{
+            expectedResponse1,
+        }),
+        messagesReceived[1]
+    );
+}
+
+TEST_F(ChatRoomPluginTests, ChangeNickNameFoldTwoConnections) {
+    // Set nickname to "Bob" initially on one connection.
+    const std::string password = "PogChamp";
+    Json::Json message(Json::Json::Type::Object);
+    message.Set("Type", "SetNickName");
+    message.Set("NickName", "Bob");
+    message.Set("Password", password);
+    ws[0].SendText(message.ToEncoding());
+
+    // Set nickname to "Bobby" initially on second connection.
+    const std::string password2 = "PogChamp";
+    message = Json::Json(Json::Json::Type::Object);
+    message.Set("Type", "SetNickName");
+    message.Set("NickName", "Bobby");
+    message.Set("Password", password2);
+    ws[1].SendText(message.ToEncoding());
+
+    // Change nickname from "Bob" to "Bobby".
+    diagnosticMessages.clear();
+    messagesReceived[0].clear();
+    messagesReceived[1].clear();
+    messagesReceived[2].clear();
+    message = Json::Json(Json::Json::Type::Object);
+    message.Set("Type", "SetNickName");
+    message.Set("NickName", "Bobby");
+    message.Set("Password", password);
+    ws[0].SendText(message.ToEncoding());
+    Json::Json expectedResponse(Json::Json::Type::Object);
+    expectedResponse.Set("Type", "SetNickNameResult");
+    expectedResponse.Set("Success", true);
+    Json::Json expectedResponse2(Json::Json::Type::Object);
+    expectedResponse2.Set("Type", "Leave");
+    expectedResponse2.Set("NickName", "Bob");
+    EXPECT_EQ(
+        (std::vector< Json::Json >{
+            expectedResponse2,
+            expectedResponse,
+        }),
+        messagesReceived[0]
+    );
+    EXPECT_EQ(
+        (std::vector< Json::Json >{
+            expectedResponse2,
+        }),
+        messagesReceived[1]
+    );
+    EXPECT_EQ(
+        (std::vector< Json::Json >{
+            expectedResponse2,
+        }),
+        messagesReceived[2]
+    );
+    EXPECT_EQ(
+        (std::vector< std::string >{
+            "Session #1[1]: Nickname changed from 'Bob' to 'Bobby'",
+        }),
+        diagnosticMessages
+    );
+}
+
+TEST_F(ChatRoomPluginTests, ChangeNickNameNonLurkerToNonLurkerAlreadyInRoom) {
+    // Set nickname to "Bob" initially on two separate connections.
+    const std::string password = "PogChamp";
+    Json::Json message(Json::Json::Type::Object);
+    message.Set("Type", "SetNickName");
+    message.Set("NickName", "Bob");
+    message.Set("Password", password);
+    ws[0].SendText(message.ToEncoding());
+    ws[1].SendText(message.ToEncoding());
+
+    // Set nickname to "Bobby" initially on third connection.
+    const std::string password2 = "PogChamp";
+    message = Json::Json(Json::Json::Type::Object);
+    message.Set("Type", "SetNickName");
+    message.Set("NickName", "Bobby");
+    message.Set("Password", password2);
+    ws[2].SendText(message.ToEncoding());
+
+    // Change nickname from "Bob" to "Bobby".
+    diagnosticMessages.clear();
+    messagesReceived[0].clear();
+    messagesReceived[1].clear();
+    messagesReceived[2].clear();
+    message = Json::Json(Json::Json::Type::Object);
+    message.Set("Type", "SetNickName");
+    message.Set("NickName", "Bobby");
+    message.Set("Password", password);
+    ws[0].SendText(message.ToEncoding());
+    Json::Json expectedResponse(Json::Json::Type::Object);
+    expectedResponse.Set("Type", "SetNickNameResult");
+    expectedResponse.Set("Success", true);
+    EXPECT_EQ(
+        (std::vector< Json::Json >{
+            expectedResponse,
+        }),
+        messagesReceived[0]
+    );
+    EXPECT_EQ(
+        (std::vector< Json::Json >{
+        }),
+        messagesReceived[1]
+    );
+    EXPECT_EQ(
+        (std::vector< Json::Json >{
+        }),
+        messagesReceived[2]
+    );
+    EXPECT_EQ(
+        (std::vector< std::string >{
+            "Session #1[1]: Nickname changed from 'Bob' to 'Bobby'",
+        }),
+        diagnosticMessages
+    );
+}
+
+TEST_F(ChatRoomPluginTests, ChangeNickNameTwoConnectionsNonLurkerToLurker) {
+    // Set nickname to "Bob" initially on two connections.
+    const std::string password = "PogChamp";
+    Json::Json message(Json::Json::Type::Object);
+    message.Set("Type", "SetNickName");
+    message.Set("NickName", "Bob");
+    message.Set("Password", password);
+    ws[0].SendText(message.ToEncoding());
+    ws[1].SendText(message.ToEncoding());
+
+    // Change nickname to "" on one connection (become a lurker).
+    diagnosticMessages.clear();
+    messagesReceived[0].clear();
+    messagesReceived[1].clear();
+    messagesReceived[2].clear();
+    message = Json::Json(Json::Json::Type::Object);
+    message.Set("Type", "SetNickName");
+    message.Set("NickName", "");
+    ws[0].SendText(message.ToEncoding());
+    Json::Json expectedResponse(Json::Json::Type::Object);
+    expectedResponse.Set("Type", "SetNickNameResult");
+    expectedResponse.Set("Success", true);
+    EXPECT_EQ(
+        (std::vector< Json::Json >{
+            expectedResponse,
+        }),
+        messagesReceived[0]
+    );
+    EXPECT_EQ(
+        (std::vector< Json::Json >{
+        }),
+        messagesReceived[1]
+    );
+    EXPECT_EQ(
+        (std::vector< Json::Json >{
+        }),
+        messagesReceived[2]
+    );
+    EXPECT_EQ(
+        (std::vector< std::string >{
+            "Session #1[1]: Nickname changed from 'Bob' to ''",
+        }),
+        diagnosticMessages
+    );
+}
+
+TEST_F(ChatRoomPluginTests, ChangeNickNameOneConnectionNonLurkerToLurker) {
+    // Set nickname to "Bob" initially on one connection.
+    const std::string password = "PogChamp";
+    Json::Json message(Json::Json::Type::Object);
+    message.Set("Type", "SetNickName");
+    message.Set("NickName", "Bob");
+    message.Set("Password", password);
+    ws[0].SendText(message.ToEncoding());
+
+    // Change nickname to "" (become a lurker).
+    diagnosticMessages.clear();
+    messagesReceived[0].clear();
+    messagesReceived[1].clear();
+    messagesReceived[2].clear();
+    message = Json::Json(Json::Json::Type::Object);
+    message.Set("Type", "SetNickName");
+    message.Set("NickName", "");
+    ws[0].SendText(message.ToEncoding());
+    Json::Json expectedResponse(Json::Json::Type::Object);
+    expectedResponse.Set("Type", "SetNickNameResult");
+    expectedResponse.Set("Success", true);
+    Json::Json expectedResponse2(Json::Json::Type::Object);
+    expectedResponse2.Set("Type", "Leave");
+    expectedResponse2.Set("NickName", "Bob");
+    EXPECT_EQ(
+        (std::vector< Json::Json >{
+            expectedResponse2,
+            expectedResponse,
+        }),
+        messagesReceived[0]
+    );
+    EXPECT_EQ(
+        (std::vector< Json::Json >{
+            expectedResponse2,
+        }),
+        messagesReceived[1]
+    );
+    EXPECT_EQ(
+        (std::vector< Json::Json >{
+            expectedResponse2,
+        }),
+        messagesReceived[2]
+    );
+    EXPECT_EQ(
+        (std::vector< std::string >{
+            "Session #1[1]: Nickname changed from 'Bob' to ''",
+        }),
+        diagnosticMessages
+    );
+}
+
+TEST_F(ChatRoomPluginTests, ChangeNickNameNonLurkerNotChanged) {
+    // Set nickname to "Bob" initially on two connections.
+    const std::string password = "PogChamp";
+    Json::Json message(Json::Json::Type::Object);
+    message.Set("Type", "SetNickName");
+    message.Set("NickName", "Bob");
+    message.Set("Password", password);
+    ws[0].SendText(message.ToEncoding());
+    ws[1].SendText(message.ToEncoding());
+
+    // Change nickname to "Bob" on one connection (not actually a change).
+    diagnosticMessages.clear();
+    messagesReceived[0].clear();
+    messagesReceived[1].clear();
+    messagesReceived[2].clear();
+    message = Json::Json(Json::Json::Type::Object);
+    message.Set("Type", "SetNickName");
+    message.Set("NickName", "Bob");
+    message.Set("Password", password);
+    ws[0].SendText(message.ToEncoding());
+    Json::Json expectedResponse(Json::Json::Type::Object);
+    expectedResponse.Set("Type", "SetNickNameResult");
+    expectedResponse.Set("Success", true);
+    EXPECT_EQ(
+        (std::vector< Json::Json >{
+            expectedResponse,
+        }),
+        messagesReceived[0]
+    );
+    EXPECT_EQ(
+        (std::vector< Json::Json >{
+        }),
+        messagesReceived[1]
+    );
+    EXPECT_EQ(
+        (std::vector< Json::Json >{
+        }),
+        messagesReceived[2]
+    );
+    EXPECT_EQ(
+        (std::vector< std::string >{
+        }),
+        diagnosticMessages
+    );
+}
+
+TEST_F(ChatRoomPluginTests, ChangeNickNameLurkerToLurker) {
+    // Change nickname to "" (which it already was).
+    Json::Json message(Json::Json::Type::Object);
+    message.Set("Type", "SetNickName");
+    message.Set("NickName", "");
+    ws[0].SendText(message.ToEncoding());
+    Json::Json expectedResponse(Json::Json::Type::Object);
+    expectedResponse.Set("Type", "SetNickNameResult");
+    expectedResponse.Set("Success", true);
+    EXPECT_EQ(
+        (std::vector< Json::Json >{
+            expectedResponse,
+        }),
+        messagesReceived[0]
+    );
+    EXPECT_EQ(
+        (std::vector< Json::Json >{
+        }),
+        messagesReceived[1]
+    );
+    EXPECT_EQ(
+        (std::vector< Json::Json >{
+        }),
+        messagesReceived[2]
+    );
+    EXPECT_EQ(
+        (std::vector< std::string >{
+        }),
+        diagnosticMessages
+    );
 }
