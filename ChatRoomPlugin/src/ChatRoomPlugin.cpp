@@ -249,6 +249,7 @@ namespace {
                         }
                     }
                 }
+                userEntry->second.nickname.clear();
                 setNickNameResult.Set("Success", true);
                 if (!oldNickname.empty()) {
                     diagnosticMessageDelegate(

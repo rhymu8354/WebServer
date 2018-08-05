@@ -1199,16 +1199,31 @@ TEST_F(ChatRoomPluginTests, ChangeNickNameOneConnectionNonLurkerToLurker) {
         messagesReceived[1]
     );
     EXPECT_EQ(
-        (std::vector< Json::Json >{
-            expectedResponse2,
-        }),
-        messagesReceived[2]
-    );
-    EXPECT_EQ(
         (std::vector< std::string >{
             "Session #1[1]: Nickname changed from 'Bob' to ''",
         }),
         diagnosticMessages
+    );
+
+    // Disconnect lurker formerly known as "Bob", and verify
+    // no "Leave" is published.
+    messagesReceived[1].clear();
+    diagnosticMessages.clear();
+    ws[0].Close();
+    {
+        std::unique_lock< decltype(mutex) > lock(mutex);
+        ASSERT_FALSE(
+            waitCondition.wait_for(
+                lock,
+                std::chrono::seconds(1),
+                [this]{ return wsClosed[0] && !messagesReceived[1].empty(); }
+            )
+        );
+    }
+    EXPECT_EQ(
+        (std::vector< Json::Json >{
+        }),
+        messagesReceived[1]
     );
 }
 
