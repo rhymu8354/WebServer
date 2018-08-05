@@ -382,7 +382,7 @@ TEST_F(ChatRoomPluginTests, SetNickName) {
     ws[0].SendText(message.ToEncoding());
     expectedResponse = Json::Json(Json::Json::Type::Object);
     expectedResponse.Set("Type", "NickNames");
-    expectedResponse.Set("NickNames", {"Bob"});
+    expectedResponse.Set("NickNames", Json::JsonArray({"Bob"}));
     ASSERT_EQ(
         (std::vector< Json::Json >{
             expectedResponse,
@@ -464,7 +464,7 @@ TEST_F(ChatRoomPluginTests, SetNickNameTwice) {
     ws[1].SendText(message.ToEncoding());
     expectedResponse = Json::Json(Json::Json::Type::Object);
     expectedResponse.Set("Type", "NickNames");
-    expectedResponse.Set("NickNames", {"Bob"});
+    expectedResponse.Set("NickNames", Json::JsonArray({"Bob"}));
     ASSERT_EQ(
         (std::vector< Json::Json >{
             expectedResponse,
@@ -570,7 +570,7 @@ TEST_F(ChatRoomPluginTests, TellFromNonLurker) {
     ws[0].SendText(message.ToEncoding());
     expectedResponse = Json::Json(Json::Json::Type::Object);
     expectedResponse.Set("Type", "NickNames");
-    expectedResponse.Set("NickNames", {"Alice", "Bob"});
+    expectedResponse.Set("NickNames", Json::JsonArray({"Alice", "Bob"}));
     ASSERT_EQ(
         (std::vector< Json::Json >{
             expectedResponse,
@@ -747,7 +747,7 @@ TEST_F(ChatRoomPluginTests, Leave) {
     expectedResponses.push_back(expectedResponse);
     expectedResponse = Json::Json(Json::Json::Type::Object);
     expectedResponse.Set("Type", "NickNames");
-    expectedResponse.Set("NickNames", {"Bob"});
+    expectedResponse.Set("NickNames", Json::JsonArray({"Bob"}));
     expectedResponses.push_back(expectedResponse);
     ASSERT_EQ(expectedResponses, messagesReceived[0]);
     messagesReceived[0].clear();
@@ -815,7 +815,7 @@ TEST_F(ChatRoomPluginTests, SetNickNameInTrailer) {
     ws[0].SendText(message.ToEncoding());
     expectedResponse = Json::Json(Json::Json::Type::Object);
     expectedResponse.Set("Type", "NickNames");
-    expectedResponse.Set("NickNames", {"Bob"});
+    expectedResponse.Set("NickNames", Json::JsonArray({"Bob"}));
     ASSERT_EQ(
         (std::vector< Json::Json >{
             expectedResponse,
