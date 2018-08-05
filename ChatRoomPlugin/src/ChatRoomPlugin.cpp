@@ -379,6 +379,9 @@ namespace {
             const Json::Json& message,
             std::map< unsigned int, User >::iterator userEntry
         ) {
+            if (userEntry->second.nickname.empty()) {
+                return;
+            }
             const std::string tell = message["Tell"];
             if (tell.empty()) {
                 return;

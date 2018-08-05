@@ -517,7 +517,7 @@ TEST_F(ChatRoomPluginTests, RoomClearedAfterUnload) {
     messagesReceived[0].clear();
 }
 
-TEST_F(ChatRoomPluginTests, Tell) {
+TEST_F(ChatRoomPluginTests, TellFromNonLurker) {
     // Bob joins the room.
     const std::string password1 = "PogChamp";
     Json::Json message(Json::Json::Type::Object);
@@ -1302,5 +1302,22 @@ TEST_F(ChatRoomPluginTests, ChangeNickNameLurkerToLurker) {
         (std::vector< std::string >{
         }),
         diagnosticMessages
+    );
+}
+
+TEST_F(ChatRoomPluginTests, TellFromLurker) {
+    Json::Json message(Json::Json::Type::Object);
+    message.Set("Type", "Tell");
+    message.Set("Tell", "HeyGuys");
+    ws[0].SendText(message.ToEncoding());
+    EXPECT_EQ(
+        (std::vector< Json::Json >{
+        }),
+        messagesReceived[0]
+    );
+    EXPECT_EQ(
+        (std::vector< Json::Json >{
+        }),
+        messagesReceived[1]
     );
 }
