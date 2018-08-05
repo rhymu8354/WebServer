@@ -45,14 +45,11 @@ struct MockServer
 
     // IServer
 public:
-    virtual SystemAbstractions::DiagnosticsSender::SubscriptionToken SubscribeToDiagnostics(
+    virtual SystemAbstractions::DiagnosticsSender::UnsubscribeDelegate SubscribeToDiagnostics(
         SystemAbstractions::DiagnosticsSender::DiagnosticMessageDelegate delegate,
         size_t minLevel = 0
     ) override {
-        return 0;
-    }
-
-    virtual void UnsubscribeFromDiagnostics(SystemAbstractions::DiagnosticsSender::SubscriptionToken subscriptionToken) override {
+        return []{};
     }
 
     virtual std::string GetConfigurationItem(const std::string& key) override {

@@ -51,10 +51,11 @@ namespace {
         std::string nickname;
 
         /**
-         * This is the token representing the structure's subscription to
-         * diagnostic messages published by the WebSocket.
+         * This is the delegate representing the structure's subscription to
+         * diagnostic messages published by the WebSocket.  When called,
+         * it terminates the subscription.
          */
-        SystemAbstractions::DiagnosticsSender::SubscriptionToken wsDiagnosticsSubscriptionToken;
+        SystemAbstractions::DiagnosticsSender::UnsubscribeDelegate wsDiagnosticsUnsubscribeDelegate;
 
         /**
          * This is the sender name to use when publishing diagnostic messages
@@ -182,7 +183,7 @@ namespace {
                             ++userEntry;
                         } else {
                             const auto nickname = userEntry->second.nickname;
-                            userEntry->second.ws->UnsubscribeFromDiagnostics(userEntry->second.wsDiagnosticsSubscriptionToken);
+                            userEntry->second.wsDiagnosticsUnsubscribeDelegate();
                             closedUsers.push_back(std::move(userEntry->second));
                             userEntry = users.erase(userEntry);
                             bool stillInRoom = false;
@@ -488,7 +489,7 @@ namespace {
                 "Session #%zu", sessionId
             );
             user.diagnosticsSenderName = diagnosticsSenderName;
-            user.wsDiagnosticsSubscriptionToken = user.ws->SubscribeToDiagnostics(
+            user.wsDiagnosticsUnsubscribeDelegate = user.ws->SubscribeToDiagnostics(
                 [this, diagnosticsSenderName](
                     std::string senderName,
                     size_t level,
