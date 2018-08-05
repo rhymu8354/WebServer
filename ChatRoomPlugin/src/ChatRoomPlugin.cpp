@@ -65,7 +65,7 @@ namespace {
         /**
          * This is the WebSocket connection to the user.
          */
-        WebSockets::WebSocket ws;
+        std::shared_ptr< WebSockets::WebSocket > ws;
 
         /**
          * This flag indicates whether or not the WebSocket
@@ -182,7 +182,7 @@ namespace {
                             ++userEntry;
                         } else {
                             const auto nickname = userEntry->second.nickname;
-                            userEntry->second.ws.UnsubscribeFromDiagnostics(userEntry->second.wsDiagnosticsSubscriptionToken);
+                            userEntry->second.ws->UnsubscribeFromDiagnostics(userEntry->second.wsDiagnosticsSubscriptionToken);
                             closedUsers.push_back(std::move(userEntry->second));
                             userEntry = users.erase(userEntry);
                             bool stillInRoom = false;
@@ -197,9 +197,12 @@ namespace {
                                 response.Set("Type", "Leave");
                                 response.Set("NickName", nickname);
                                 const auto responseEncoding = response.ToEncoding();
-                                for (auto& user: users) {
-                                    user.second.ws.SendText(responseEncoding);
+                                auto usersCopy = users;
+                                lock.unlock();
+                                for (auto& user: usersCopy) {
+                                    user.second.ws->SendText(responseEncoding);
                                 }
+                                lock.lock();
                             }
                         }
                     }
@@ -255,7 +258,7 @@ namespace {
                     const auto responseEncoding = response.ToEncoding();
                     for (auto& user: users) {
                         if (user.second.nickname != nickname) {
-                            user.second.ws.SendText(responseEncoding);
+                            user.second.ws->SendText(responseEncoding);
                         }
                     }
                 }
@@ -274,7 +277,7 @@ namespace {
             } else {
                 response.Set("Success", false);
             }
-            userEntry->second.ws.SendText(response.ToEncoding());
+            userEntry->second.ws->SendText(response.ToEncoding());
         }
 
         /**
@@ -304,7 +307,7 @@ namespace {
                 nicknames.Add(nickname);
             }
             response.Set("NickNames", nicknames);
-            userEntry->second.ws.SendText(response.ToEncoding());
+            userEntry->second.ws->SendText(response.ToEncoding());
         }
 
         /**
@@ -331,7 +334,7 @@ namespace {
             response.Set("Sender", userEntry->second.nickname);
             const auto responseEncoding = response.ToEncoding();
             for (auto& user: users) {
-                user.second.ws.SendText(responseEncoding);
+                user.second.ws->SendText(responseEncoding);
             }
         }
 
@@ -387,7 +390,7 @@ namespace {
             if (userEntry == users.end()) {
                 return;
             }
-            userEntry->second.ws.Close(code, reason);
+            userEntry->second.ws->Close(code, reason);
             userEntry->second.open = false;
             usersHaveClosed = true;
             workerWakeCondition.notify_all();
@@ -422,11 +425,12 @@ namespace {
             const auto response = std::make_shared< Http::Response >();
             const auto sessionId = nextSessionId++;
             auto& user = users[sessionId];
+            user.ws = std::make_shared< WebSockets::WebSocket >();
             const auto diagnosticsSenderName = SystemAbstractions::sprintf(
                 "Session #%zu", sessionId
             );
             user.diagnosticsSenderName = diagnosticsSenderName;
-            user.wsDiagnosticsSubscriptionToken = user.ws.SubscribeToDiagnostics(
+            user.wsDiagnosticsSubscriptionToken = user.ws->SubscribeToDiagnostics(
                 [this, diagnosticsSenderName](
                     std::string senderName,
                     size_t level,
@@ -439,10 +443,10 @@ namespace {
                     );
                 }
             );
-            user.ws.SetTextDelegate(
+            user.ws->SetTextDelegate(
                 [this, sessionId](const std::string& data){ ReceiveMessage(sessionId, data); }
             );
-            user.ws.SetCloseDelegate(
+            user.ws->SetCloseDelegate(
                 [this, sessionId](
                     unsigned int code,
                     const std::string& reason
@@ -451,7 +455,7 @@ namespace {
                 }
             );
             if (
-                !user.ws.OpenAsServer(
+                !user.ws->OpenAsServer(
                     connection,
                     *request,
                     *response,
