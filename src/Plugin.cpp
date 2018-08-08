@@ -27,14 +27,14 @@ void Plugin::Load(
     Http::Server& server,
     SystemAbstractions::DiagnosticsSender::DiagnosticMessageDelegate diagnosticMessageDelegate
 ) {
-    diagnosticMessageDelegate("", 0, SystemAbstractions::sprintf("Copying plug-in '%s'", pluginName.c_str()));
+    diagnosticMessageDelegate("WebServer", 0, SystemAbstractions::sprintf("Copying plug-in '%s'", pluginName.c_str()));
     if (imageFile.Copy(runtimeFile.GetPath())) {
-        diagnosticMessageDelegate("", 0, SystemAbstractions::sprintf("Linking plug-in '%s'", pluginName.c_str()));
+        diagnosticMessageDelegate("WebServer", 0, SystemAbstractions::sprintf("Linking plug-in '%s'", pluginName.c_str()));
         if (runtimeLibrary.Load(pluginsRuntimePath, moduleName)) {
-            diagnosticMessageDelegate("", 0, SystemAbstractions::sprintf("Locating plug-in '%s' entrypoint", pluginName.c_str()));
+            diagnosticMessageDelegate("WebServer", 0, SystemAbstractions::sprintf("Locating plug-in '%s' entrypoint", pluginName.c_str()));
             const auto loadPlugin = (PluginEntryPoint)runtimeLibrary.GetProcedure("LoadPlugin");
             if (loadPlugin != nullptr) {
-                diagnosticMessageDelegate("", 0, SystemAbstractions::sprintf("Loading plug-in '%s'", pluginName.c_str()));
+                diagnosticMessageDelegate("WebServer", 0, SystemAbstractions::sprintf("Loading plug-in '%s'", pluginName.c_str()));
                 loadPlugin(
                     &server,
                     configuration,
@@ -74,11 +74,11 @@ void Plugin::Load(
                     );
                     loadable = false;
                 } else {
-                    diagnosticMessageDelegate("", 1, SystemAbstractions::sprintf("Plug-in '%s' loaded", pluginName.c_str()));
+                    diagnosticMessageDelegate("WebServer", 1, SystemAbstractions::sprintf("Plug-in '%s' loaded", pluginName.c_str()));
                 }
             } else {
                 diagnosticMessageDelegate(
-                    "",
+                    "WebServer",
                     SystemAbstractions::DiagnosticsSender::Levels::WARNING,
                     SystemAbstractions::sprintf(
                         "unable to find plugin '%s' entrypoint",
@@ -92,7 +92,7 @@ void Plugin::Load(
             }
         } else {
             diagnosticMessageDelegate(
-                "",
+                "WebServer",
                 SystemAbstractions::DiagnosticsSender::Levels::WARNING,
                 SystemAbstractions::sprintf(
                     "unable to link plugin '%s' library",
@@ -106,7 +106,7 @@ void Plugin::Load(
         }
     } else {
         diagnosticMessageDelegate(
-            "",
+            "WebServer",
             SystemAbstractions::DiagnosticsSender::Levels::WARNING,
             SystemAbstractions::sprintf(
                 "unable to copy plugin '%s' library",
@@ -123,9 +123,9 @@ void Plugin::Unload(
     if (unloadDelegate == nullptr) {
         return;
     }
-    diagnosticMessageDelegate("", 0, SystemAbstractions::sprintf("Unloading plug-in '%s'", pluginName.c_str()));
+    diagnosticMessageDelegate("WebServer", 0, SystemAbstractions::sprintf("Unloading plug-in '%s'", pluginName.c_str()));
     unloadDelegate();
     unloadDelegate = nullptr;
     runtimeLibrary.Unload();
-    diagnosticMessageDelegate("", 1, SystemAbstractions::sprintf("Plug-in '%s' unloaded", pluginName.c_str()));
+    diagnosticMessageDelegate("WebServer", 1, SystemAbstractions::sprintf("Plug-in '%s' unloaded", pluginName.c_str()));
 }
