@@ -15,6 +15,7 @@
 #include <condition_variable>
 #include <inttypes.h>
 #include <memory>
+#include <regex>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -266,10 +267,16 @@ namespace {
         std::string pluginsImagePath = environment.pluginsImagePath;
         if (configuration.Has("plugins-image")) {
             pluginsImagePath = (std::string)configuration["plugins-image"];
+            if (!SystemAbstractions::File::IsAbsolutePath(pluginsImagePath)) {
+                pluginsImagePath = SystemAbstractions::File::GetExeParentDirectory() + "/" + pluginsImagePath;
+            }
         }
         std::string pluginsRuntimePath = environment.pluginsRuntimePath;
         if (configuration.Has("plugins-runtime")) {
             pluginsRuntimePath = (std::string)configuration["plugins-runtime"];
+            if (!SystemAbstractions::File::IsAbsolutePath(pluginsRuntimePath)) {
+                pluginsRuntimePath = SystemAbstractions::File::GetExeParentDirectory() + "/" + pluginsRuntimePath;
+            }
         }
         const auto pluginsEntries = configuration["plugins"];
         const auto pluginsEnabled = configuration["plugins-enabled"];

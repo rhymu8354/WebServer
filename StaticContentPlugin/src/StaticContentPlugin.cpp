@@ -11,6 +11,7 @@
 #include <Http/Server.hpp>
 #include <inttypes.h>
 #include <Json/Json.hpp>
+#include <regex>
 #include <SystemAbstractions/File.hpp>
 #include <SystemAbstractions/StringExtensions.hpp>
 #include <WebServer/PluginEntryPoint.hpp>
@@ -79,7 +80,10 @@ extern "C" API void LoadPlugin(
         );
         return;
     }
-    const std::string root = configuration["root"];
+    std::string root = configuration["root"];
+    if (!SystemAbstractions::File::IsAbsolutePath(root)) {
+        root = SystemAbstractions::File::GetExeParentDirectory() + "/" + root;
+    }
 
     // Register to handle requests for the space we're serving.
     const auto unregistrationDelegate = server->RegisterResource(
