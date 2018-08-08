@@ -194,9 +194,10 @@ namespace {
                                 }
                             }
                             if (!stillInRoom) {
-                                Json::Json response(Json::Json::Type::Object);
-                                response.Set("Type", "Leave");
-                                response.Set("NickName", nickname);
+                                const auto response = Json::JsonObject({
+                                    {"Type", "Leave"},
+                                    {"NickName", nickname},
+                                });
                                 const auto responseEncoding = response.ToEncoding();
                                 auto usersCopy = users;
                                 lock.unlock();
@@ -234,8 +235,9 @@ namespace {
             const auto oldNickname = userEntry->second.nickname;
             const std::string newNickname = message["NickName"];
             const std::string password = message["Password"];
-            Json::Json setNickNameResult(Json::Json::Type::Object);
-            setNickNameResult.Set("Type", "SetNickNameResult");
+            auto setNickNameResult = Json::JsonObject({
+                {"Type", "SetNickNameResult"},
+            });
             auto accountEntry = accounts.find(newNickname);
             if (newNickname.empty()) {
                 bool oldNickNameElsewhereInRoom = false;
@@ -267,9 +269,10 @@ namespace {
                     !oldNickname.empty()
                     && !oldNickNameElsewhereInRoom
                 ) {
-                    Json::Json response(Json::Json::Type::Object);
-                    response.Set("Type", "Leave");
-                    response.Set("NickName", oldNickname);
+                    const auto response = Json::JsonObject({
+                        {"Type", "Leave"},
+                        {"NickName", oldNickname},
+                    });
                     const auto responseEncoding = response.ToEncoding();
                     for (const auto& user: users) {
                         user.second.ws->SendText(responseEncoding);
@@ -299,18 +302,20 @@ namespace {
                     !oldNickname.empty()
                     && !oldNickNameElsewhereInRoom
                 ) {
-                    Json::Json response(Json::Json::Type::Object);
-                    response.Set("Type", "Leave");
-                    response.Set("NickName", oldNickname);
+                    const auto response = Json::JsonObject({
+                        {"Type", "Leave"},
+                        {"NickName", oldNickname},
+                    });
                     const auto responseEncoding = response.ToEncoding();
                     for (const auto& user: users) {
                         user.second.ws->SendText(responseEncoding);
                     }
                 }
                 if (!newNickNameAlreadyInRoom) {
-                    Json::Json response(Json::Json::Type::Object);
-                    response.Set("Type", "Join");
-                    response.Set("NickName", newNickname);
+                    const auto response = Json::JsonObject({
+                        {"Type", "Join"},
+                        {"NickName", newNickname},
+                    });
                     const auto responseEncoding = response.ToEncoding();
                     for (auto& user: users) {
                         user.second.ws->SendText(responseEncoding);
@@ -350,8 +355,9 @@ namespace {
             const Json::Json& message,
             std::map< unsigned int, User >::iterator userEntry
         ) {
-            Json::Json response(Json::Json::Type::Object);
-            response.Set("Type", "NickNames");
+            auto response = Json::JsonObject({
+                {"Type", "NickNames"},
+            });
             std::set< std::string > nicknameSet;
             for (const auto& user: users) {
                 if (!user.second.nickname.empty()) {
@@ -387,10 +393,11 @@ namespace {
             if (tell.empty()) {
                 return;
             }
-            Json::Json response(Json::Json::Type::Object);
-            response.Set("Type", "Tell");
-            response.Set("Tell", tell);
-            response.Set("Sender", userEntry->second.nickname);
+            const auto response = Json::JsonObject({
+                {"Type", "Tell"},
+                {"Tell", tell},
+                {"Sender", userEntry->second.nickname},
+            });
             const auto responseEncoding = response.ToEncoding();
             for (auto& user: users) {
                 user.second.ws->SendText(responseEncoding);

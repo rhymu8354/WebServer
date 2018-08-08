@@ -299,8 +299,9 @@ struct ChatRoomPluginTests
     // ::testing::Test
 
     virtual void SetUp() {
-        Json::Json config(Json::Json::Type::Object);
-        config.Set("space", CHAT_ROOM_PATH);
+        const auto config = Json::JsonObject({
+            {"space", CHAT_ROOM_PATH},
+        });
         LoadPlugin(
             &server,
             config,
@@ -349,17 +350,20 @@ TEST_F(ChatRoomPluginTests, LoadAndConnect) {
 
 TEST_F(ChatRoomPluginTests, SetNickName) {
     const std::string password = "PogChamp";
-    Json::Json message(Json::Json::Type::Object);
-    message.Set("Type", "SetNickName");
-    message.Set("NickName", "Bob");
-    message.Set("Password", password);
+    auto message = Json::JsonObject({
+        {"Type", "SetNickName"},
+        {"NickName", "Bob"},
+        {"Password", password},
+    });
     ws[0].SendText(message.ToEncoding());
-    Json::Json expectedResponse(Json::Json::Type::Object);
-    expectedResponse.Set("Type", "Join");
-    expectedResponse.Set("NickName", "Bob");
-    Json::Json expectedResponse2(Json::Json::Type::Object);
-    expectedResponse2.Set("Type", "SetNickNameResult");
-    expectedResponse2.Set("Success", true);
+    auto expectedResponse = Json::JsonObject({
+        {"Type", "Join"},
+        {"NickName", "Bob"},
+    });
+    auto expectedResponse2 = Json::JsonObject({
+        {"Type", "SetNickNameResult"},
+        {"Success", true},
+    });
     ASSERT_EQ(
         (std::vector< Json::Json >{
             expectedResponse,
@@ -374,12 +378,14 @@ TEST_F(ChatRoomPluginTests, SetNickName) {
         diagnosticMessages
     );
     messagesReceived[0].clear();
-    message = Json::Json(Json::Json::Type::Object);
-    message.Set("Type", "GetNickNames");
+    message = Json::JsonObject({
+        {"Type", "GetNickNames"},
+    });
     ws[0].SendText(message.ToEncoding());
-    expectedResponse = Json::Json(Json::Json::Type::Object);
-    expectedResponse.Set("Type", "NickNames");
-    expectedResponse.Set("NickNames", Json::JsonArray({"Bob"}));
+    expectedResponse = Json::JsonObject({
+        {"Type", "NickNames"},
+        {"NickNames", Json::JsonArray({"Bob"})},
+    });
     ASSERT_EQ(
         (std::vector< Json::Json >{
             expectedResponse,
@@ -392,17 +398,20 @@ TEST_F(ChatRoomPluginTests, SetNickName) {
 TEST_F(ChatRoomPluginTests, SetNickNameTwice) {
     // Set nickname for first client.
     const std::string password1 = "PogChamp";
-    Json::Json message(Json::Json::Type::Object);
-    message.Set("Type", "SetNickName");
-    message.Set("NickName", "Bob");
-    message.Set("Password", password1);
+    auto message = Json::JsonObject({
+        {"Type", "SetNickName"},
+        {"NickName", "Bob"},
+        {"Password", password1},
+    });
     ws[0].SendText(message.ToEncoding());
-    Json::Json expectedResponse(Json::Json::Type::Object);
-    expectedResponse.Set("Type", "Join");
-    expectedResponse.Set("NickName", "Bob");
-    Json::Json expectedResponse2(Json::Json::Type::Object);
-    expectedResponse2.Set("Type", "SetNickNameResult");
-    expectedResponse2.Set("Success", true);
+    auto expectedResponse = Json::JsonObject({
+        {"Type", "Join"},
+        {"NickName", "Bob"},
+    });
+    auto expectedResponse2 = Json::JsonObject({
+        {"Type", "SetNickNameResult"},
+        {"Success", true},
+    });
     ASSERT_EQ(
         (std::vector< Json::Json >{
             expectedResponse,
@@ -417,14 +426,16 @@ TEST_F(ChatRoomPluginTests, SetNickNameTwice) {
     // but with the wrong password.
     messagesReceived[1].clear();
     const std::string password2 = "Poggers";
-    message = Json::Json(Json::Json::Type::Object);
-    message.Set("Type", "SetNickName");
-    message.Set("NickName", "Bob");
-    message.Set("Password", password2);
+    message = Json::JsonObject({
+        {"Type", "SetNickName"},
+        {"NickName", "Bob"},
+        {"Password", password2},
+    });
     ws[1].SendText(message.ToEncoding());
-    expectedResponse = Json::Json(Json::Json::Type::Object);
-    expectedResponse.Set("Type", "SetNickNameResult");
-    expectedResponse.Set("Success", false);
+    expectedResponse = Json::JsonObject({
+        {"Type", "SetNickNameResult"},
+        {"Success", false},
+    });
     ASSERT_EQ(
         (std::vector< Json::Json >{
             expectedResponse,
@@ -439,14 +450,16 @@ TEST_F(ChatRoomPluginTests, SetNickNameTwice) {
     // a real-world use case might be the same user joining
     // the chat room from two separate browser windows.
     messagesReceived[2].clear();
-    message = Json::Json(Json::Json::Type::Object);
-    message.Set("Type", "SetNickName");
-    message.Set("NickName", "Bob");
-    message.Set("Password", password1);
+    message = Json::JsonObject({
+        {"Type", "SetNickName"},
+        {"NickName", "Bob"},
+        {"Password", password1},
+    });
     ws[2].SendText(message.ToEncoding());
-    expectedResponse = Json::Json(Json::Json::Type::Object);
-    expectedResponse.Set("Type", "SetNickNameResult");
-    expectedResponse.Set("Success", true);
+    expectedResponse = Json::JsonObject({
+        {"Type", "SetNickNameResult"},
+        {"Success", true},
+    });
     ASSERT_EQ(
         (std::vector< Json::Json >{
             expectedResponse,
@@ -459,9 +472,10 @@ TEST_F(ChatRoomPluginTests, SetNickNameTwice) {
     message = Json::Json(Json::Json::Type::Object);
     message.Set("Type", "GetNickNames");
     ws[1].SendText(message.ToEncoding());
-    expectedResponse = Json::Json(Json::Json::Type::Object);
-    expectedResponse.Set("Type", "NickNames");
-    expectedResponse.Set("NickNames", Json::JsonArray({"Bob"}));
+    expectedResponse = Json::JsonObject({
+        {"Type", "NickNames"},
+        {"NickNames", Json::JsonArray({"Bob"})},
+    });
     ASSERT_EQ(
         (std::vector< Json::Json >{
             expectedResponse,
@@ -474,17 +488,20 @@ TEST_F(ChatRoomPluginTests, SetNickNameTwice) {
 TEST_F(ChatRoomPluginTests, RoomClearedAfterUnload) {
     // Have Bob join the chat room.
     const std::string password = "PogChamp";
-    Json::Json message(Json::Json::Type::Object);
-    message.Set("Type", "SetNickName");
-    message.Set("NickName", "Bob");
-    message.Set("Password", password);
+    auto message = Json::JsonObject({
+        {"Type", "SetNickName"},
+        {"NickName", "Bob"},
+        {"Password", password},
+    });
     ws[0].SendText(message.ToEncoding());
-    Json::Json expectedResponse(Json::Json::Type::Object);
-    expectedResponse.Set("Type", "Join");
-    expectedResponse.Set("NickName", "Bob");
-    Json::Json expectedResponse2(Json::Json::Type::Object);
-    expectedResponse2.Set("Type", "SetNickNameResult");
-    expectedResponse2.Set("Success", true);
+    auto expectedResponse = Json::JsonObject({
+        {"Type", "Join"},
+        {"NickName", "Bob"},
+    });
+    auto expectedResponse2 = Json::JsonObject({
+        {"Type", "SetNickNameResult"},
+        {"Success", true},
+    });
     ASSERT_EQ(
         (std::vector< Json::Json >{
             expectedResponse,
@@ -499,12 +516,14 @@ TEST_F(ChatRoomPluginTests, RoomClearedAfterUnload) {
     SetUp();
 
     // Verify the nickname list is empty.
-    message = Json::Json(Json::Json::Type::Object);
-    message.Set("Type", "GetNickNames");
+    message = Json::JsonObject({
+        {"Type", "GetNickNames"},
+    });
     ws[0].SendText(message.ToEncoding());
-    expectedResponse = Json::Json(Json::Json::Type::Object);
-    expectedResponse.Set("Type", "NickNames");
-    expectedResponse.Set("NickNames", Json::Json(Json::Json::Type::Array));
+    expectedResponse = Json::JsonObject({
+        {"Type", "NickNames"},
+        {"NickNames", Json::JsonArray({})},
+    });
     ASSERT_EQ(
         (std::vector< Json::Json >{
             expectedResponse,
