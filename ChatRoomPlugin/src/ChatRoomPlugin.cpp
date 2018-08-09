@@ -482,13 +482,13 @@ namespace {
          * @return
          *     The response to be returned to the client is returned.
          */
-        std::shared_ptr< Http::Response > AddUser(
-            std::shared_ptr< Http::Request > request,
+        Http::Response AddUser(
+            const Http::Request& request,
             std::shared_ptr< Http::Connection > connection,
             const std::string& trailer
         ) {
             std::lock_guard< decltype(mutex) > lock(mutex);
-            const auto response = std::make_shared< Http::Response >();
+            Http::Response response;
             const auto sessionId = nextSessionId++;
             auto& user = users[sessionId];
             user.ws = std::make_shared< WebSockets::WebSocket >();
@@ -523,15 +523,15 @@ namespace {
             if (
                 !user.ws->OpenAsServer(
                     connection,
-                    *request,
-                    *response,
+                    request,
+                    response,
                     trailer
                 )
             ) {
                 (void)users.erase(sessionId);
-                response->statusCode = 200;
-                response->headers.SetHeader("Content-Type", "text/plain");
-                response->body = "Try again, but next time use a WebSocket.  Kthxbye!";
+                response.statusCode = 200;
+                response.headers.SetHeader("Content-Type", "text/plain");
+                response.body = "Try again, but next time use a WebSocket.  Kthxbye!";
             }
             return response;
         }
@@ -593,7 +593,7 @@ extern "C" API void LoadPlugin(
     const auto unregistrationDelegate = server->RegisterResource(
         space,
         [](
-            std::shared_ptr< Http::Request > request,
+            const Http::Request& request,
             std::shared_ptr< Http::Connection > connection,
             const std::string& trailer
         ){

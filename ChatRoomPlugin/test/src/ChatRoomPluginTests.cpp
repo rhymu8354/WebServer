@@ -323,12 +323,12 @@ struct ChatRoomPluginTests
         );
         for (size_t i = 0; i < NUM_MOCK_CLIENTS; ++i) {
             InitilizeClientWebSocket(i);
-            const auto openRequest = std::make_shared< Http::Request >();
-            openRequest->method = "GET";
-            (void)openRequest->target.ParseFromString("/chat");
-            ws[i].StartOpenAsClient(*openRequest);
+            Http::Request openRequest;
+            openRequest.method = "GET";
+            (void)openRequest.target.ParseFromString("/chat");
+            ws[i].StartOpenAsClient(openRequest);
             const auto openResponse = server.registeredResourceDelegate(openRequest, serverConnection[i], "");
-            ASSERT_TRUE(ws[i].FinishOpenAsClient(clientConnection[i], *openResponse));
+            ASSERT_TRUE(ws[i].FinishOpenAsClient(clientConnection[i], openResponse));
         }
     }
 
@@ -798,14 +798,14 @@ TEST_F(ChatRoomPluginTests, SetNickNameInTrailer) {
             )
         );
     }
-    const auto openRequest = std::make_shared< Http::Request >();
-    openRequest->method = "GET";
-    (void)openRequest->target.ParseFromString("/chat");
+    Http::Request openRequest;
+    openRequest.method = "GET";
+    (void)openRequest.target.ParseFromString("/chat");
     ws[0] = WebSockets::WebSocket();
     InitilizeClientWebSocket(0);
-    ws[0].StartOpenAsClient(*openRequest);
+    ws[0].StartOpenAsClient(openRequest);
     const auto openResponse = server.registeredResourceDelegate(openRequest, serverConnection[0], frameFirstHalf);
-    ASSERT_TRUE(ws[0].FinishOpenAsClient(clientConnection[0], *openResponse));
+    ASSERT_TRUE(ws[0].FinishOpenAsClient(clientConnection[0], openResponse));
     serverConnection[0]->dataReceivedDelegate(
         std::vector< uint8_t >(
             frameSecondHalf.begin(),
@@ -852,13 +852,13 @@ TEST_F(ChatRoomPluginTests, ConnectionNotUpgraded) {
             data.end()
         );
     };
-    const auto request = std::make_shared< Http::Request >();
-    request->method = "GET";
-    (void)request->target.ParseFromString("");
+    Http::Request request;
+    request.method = "GET";
+    (void)request.target.ParseFromString("");
     const auto response = server.registeredResourceDelegate(request, connection, "");
-    ASSERT_EQ(200, response->statusCode);
-    ASSERT_EQ("text/plain", response->headers.GetHeaderValue("Content-Type"));
-    ASSERT_EQ("Try again, but next time use a WebSocket.  Kthxbye!", response->body);
+    ASSERT_EQ(200, response.statusCode);
+    ASSERT_EQ("text/plain", response.headers.GetHeaderValue("Content-Type"));
+    ASSERT_EQ("Try again, but next time use a WebSocket.  Kthxbye!", response.body);
 }
 
 TEST_F(ChatRoomPluginTests, ChangeNickNameTwoConnectionNonLurkerToNonLurkerNotAlreadyInRoom) {

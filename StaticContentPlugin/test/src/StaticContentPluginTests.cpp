@@ -156,10 +156,10 @@ TEST_F(StaticContentPluginTests, ServeTestFile) {
         },
         unloadDelegate
     );
-    const auto request = std::make_shared< Http::Request >();
-    request->target.SetPath({"foo.txt"});
+    Http::Request request;
+    request.target.SetPath({"foo.txt"});
     const auto response = server.registeredResourceDelegate(request, nullptr, "");
-    ASSERT_EQ("Hello!", response->body);
+    ASSERT_EQ("Hello!", response.body);
 }
 
 TEST_F(StaticContentPluginTests, ConditionalGetWithMatchingEntityTagHitsCache) {
@@ -195,20 +195,20 @@ TEST_F(StaticContentPluginTests, ConditionalGetWithMatchingEntityTagHitsCache) {
 
     // Send initial request to get the entity tag
     // of the test file.
-    auto request = std::make_shared< Http::Request >();
-    request->target.SetPath({"foo.txt"});
+    Http::Request request;
+    request.target.SetPath({"foo.txt"});
     auto response = server.registeredResourceDelegate(request, nullptr, "");
-    ASSERT_EQ(200, response->statusCode);
-    ASSERT_TRUE(response->headers.HasHeader("ETag"));
-    const auto etag = response->headers.GetHeaderValue("ETag");
+    ASSERT_EQ(200, response.statusCode);
+    ASSERT_TRUE(response.headers.HasHeader("ETag"));
+    const auto etag = response.headers.GetHeaderValue("ETag");
 
     // Send second conditional request for the test
     // file, this time expecting "304 Not Modified" response.
-    request = std::make_shared< Http::Request >();
-    request->target.SetPath({"foo.txt"});
-    request->headers.SetHeader("If-None-Match", etag);
+    request = Http::Request();
+    request.target.SetPath({"foo.txt"});
+    request.headers.SetHeader("If-None-Match", etag);
     response = server.registeredResourceDelegate(request, nullptr, "");
-    EXPECT_EQ(304, response->statusCode);
-    EXPECT_EQ("Not Modified", response->reasonPhrase);
-    EXPECT_TRUE(response->body.empty());
+    EXPECT_EQ(304, response.statusCode);
+    EXPECT_EQ("Not Modified", response.reasonPhrase);
+    EXPECT_TRUE(response.body.empty());
 }

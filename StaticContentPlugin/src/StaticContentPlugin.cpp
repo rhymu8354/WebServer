@@ -89,19 +89,19 @@ extern "C" API void LoadPlugin(
     const auto unregistrationDelegate = server->RegisterResource(
         space,
         [root](
-            std::shared_ptr< Http::Request > request,
+            const Http::Request& request,
             std::shared_ptr< Http::Connection > connection,
             const std::string& trailer
         ){
             const auto path = SystemAbstractions::Join(
                 {
                     root,
-                    SystemAbstractions::Join(request->target.GetPath(), "/")
+                    SystemAbstractions::Join(request.target.GetPath(), "/")
                 },
                 "/"
             );
             SystemAbstractions::File file(path);
-            const auto response = std::make_shared< Http::Response >();
+            Http::Response response;
             if (
                 file.IsExisting()
                 && !file.IsDirectory()
@@ -117,49 +117,49 @@ extern "C" API void LoadPlugin(
                         }
                         const auto etag = SystemAbstractions::sprintf("%" PRIu32, sum);
                         if (
-                            request->headers.HasHeader("If-None-Match")
-                            && (request->headers.GetHeaderValue("If-None-Match") == etag)
+                            request.headers.HasHeader("If-None-Match")
+                            && (request.headers.GetHeaderValue("If-None-Match") == etag)
                         ) {
-                            response->statusCode = 304;
-                            response->reasonPhrase = "Not Modified";
+                            response.statusCode = 304;
+                            response.reasonPhrase = "Not Modified";
                         } else {
-                            response->statusCode = 200;
-                            response->reasonPhrase = "OK";
-                            response->body.assign(
+                            response.statusCode = 200;
+                            response.reasonPhrase = "OK";
+                            response.body.assign(
                                 buffer.begin(),
                                 buffer.end()
                             );
                         }
-                        response->headers.AddHeader("Content-Type", "text/html");
-                        response->headers.AddHeader("ETag", etag);
+                        response.headers.AddHeader("Content-Type", "text/html");
+                        response.headers.AddHeader("ETag", etag);
                     } else {
-                        response->statusCode = 500;
-                        response->reasonPhrase = "Unable to read file";
-                        response->headers.AddHeader("Content-Type", "text/plain");
-                        response->body = SystemAbstractions::sprintf(
+                        response.statusCode = 500;
+                        response.reasonPhrase = "Unable to read file";
+                        response.headers.AddHeader("Content-Type", "text/plain");
+                        response.body = SystemAbstractions::sprintf(
                             "Error reading file '%s'",
                             path.c_str()
                         );
                     }
                 } else {
-                    response->statusCode = 500;
-                    response->reasonPhrase = "Unable to open file";
-                    response->headers.AddHeader("Content-Type", "text/plain");
-                    response->body = SystemAbstractions::sprintf(
+                    response.statusCode = 500;
+                    response.reasonPhrase = "Unable to open file";
+                    response.headers.AddHeader("Content-Type", "text/plain");
+                    response.body = SystemAbstractions::sprintf(
                         "Error opening file '%s'",
                         path.c_str()
                     );
                 }
             } else {
-                response->statusCode = 404;
-                response->reasonPhrase = "Not Found";
-                response->headers.AddHeader("Content-Type", "text/plain");
-                response->body = SystemAbstractions::sprintf(
+                response.statusCode = 404;
+                response.reasonPhrase = "Not Found";
+                response.headers.AddHeader("Content-Type", "text/plain");
+                response.body = SystemAbstractions::sprintf(
                     "File '%s' not found.",
                     path.c_str()
                 );
             }
-            response->headers.AddHeader("Content-Length", SystemAbstractions::sprintf("%zu", response->body.length()));
+            response.headers.AddHeader("Content-Length", SystemAbstractions::sprintf("%zu", response.body.length()));
             return response;
         }
     );
