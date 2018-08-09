@@ -5,6 +5,8 @@
 cmake_minimum_required(VERSION 3.8)
 set(This StaticContentPluginTests)
 
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY $<TARGET_FILE_DIR:StaticContentPlugin>)
+
 set(Sources
     src/StaticContentPluginTests.cpp
 )
