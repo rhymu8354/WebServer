@@ -22,9 +22,9 @@ class TimeKeeper
     // Lifecycle Methods
 public:
     ~TimeKeeper() noexcept;
-    TimeKeeper(const TimeKeeper&) noexcept = delete;
-    TimeKeeper(TimeKeeper&&) noexcept= delete;
-    TimeKeeper& operator=(const TimeKeeper&) noexcept = delete;
+    TimeKeeper(const TimeKeeper&) = delete;
+    TimeKeeper(TimeKeeper&&) noexcept = delete;
+    TimeKeeper& operator=(const TimeKeeper&) = delete;
     TimeKeeper& operator=(TimeKeeper&&) noexcept = delete;
 
     // Public Methods

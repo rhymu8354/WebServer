@@ -27,9 +27,9 @@ class PluginLoader {
     // Lifecycle Methods
 public:
     ~PluginLoader() noexcept;
-    PluginLoader(const PluginLoader&) noexcept = delete;
-    PluginLoader(PluginLoader&&) noexcept= delete;
-    PluginLoader& operator=(const PluginLoader&) noexcept = delete;
+    PluginLoader(const PluginLoader&) = delete;
+    PluginLoader(PluginLoader&&) noexcept = delete;
+    PluginLoader& operator=(const PluginLoader&) = delete;
     PluginLoader& operator=(PluginLoader&&) noexcept = delete;
 
     // Public Methods
