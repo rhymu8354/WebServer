@@ -8,6 +8,7 @@
  */
 
 #include <gtest/gtest.h>
+#include <Sha1/Sha1.hpp>
 #include <stdio.h>
 #include <SystemAbstractions/File.hpp>
 #include <WebServer/PluginEntryPoint.hpp>
@@ -211,4 +212,50 @@ TEST_F(StaticContentPluginTests, ConditionalGetWithMatchingEntityTagHitsCache) {
     EXPECT_EQ(304, response.statusCode);
     EXPECT_EQ("Not Modified", response.reasonPhrase);
     EXPECT_TRUE(response.body.empty());
+}
+
+TEST_F(StaticContentPluginTests, EntityTagComputedFromSha1) {
+    // Create test file.
+    SystemAbstractions::File testFile(testAreaPath + "/foo.txt");
+    (void)testFile.Create();
+    const std::string testFileContent = "Hello!";
+    (void)testFile.Write(testFileContent.data(), testFileContent.length());
+    testFile.Close();
+
+    // Configure plug-in.
+    MockServer server;
+    std::function< void() > unloadDelegate;
+    Json::Json config(Json::Json::Type::Object);
+    config.Set("space", "/");
+    config.Set("root", testAreaPath);
+    LoadPlugin(
+        &server,
+        config,
+        [](
+            std::string senderName,
+            size_t level,
+            std::string message
+        ){
+            printf(
+                "[%s:%zu] %s\n",
+                senderName.c_str(),
+                level,
+                message.c_str()
+            );
+        },
+        unloadDelegate
+    );
+
+    // Send request to get the entity tag
+    // of the test file.
+    Http::Request request;
+    request.target.SetPath({"foo.txt"});
+    auto response = server.registeredResourceDelegate(request, nullptr, "");
+    ASSERT_EQ(200, response.statusCode);
+    ASSERT_TRUE(response.headers.HasHeader("ETag"));
+    const auto actualEtag = response.headers.GetHeaderValue("ETag");
+
+    // Verify entity tag was computed using SHA-1.
+    const auto expectedEtag = Sha1::Sha1String(testFileContent);
+    EXPECT_EQ(expectedEtag, actualEtag);
 }

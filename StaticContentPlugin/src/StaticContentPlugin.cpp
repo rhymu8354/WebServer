@@ -12,6 +12,7 @@
 #include <inttypes.h>
 #include <Json/Json.hpp>
 #include <regex>
+#include <Sha1/Sha1.hpp>
 #include <SystemAbstractions/File.hpp>
 #include <SystemAbstractions/StringExtensions.hpp>
 #include <WebServer/PluginEntryPoint.hpp>
@@ -109,13 +110,7 @@ extern "C" API void LoadPlugin(
                 if (file.Open()) {
                     SystemAbstractions::File::Buffer buffer(file.GetSize());
                     if (file.Read(buffer) == buffer.size()) {
-                        // TODO: replace with something that gives
-                        // a strong entity tag -- this one is weak.
-                        uint32_t sum = 0;
-                        for (auto b: buffer) {
-                            sum += b;
-                        }
-                        const auto etag = SystemAbstractions::sprintf("%" PRIu32, sum);
+                        const auto etag = Sha1::Sha1String(buffer);
                         if (
                             request.headers.HasHeader("If-None-Match")
                             && (request.headers.GetHeaderValue("If-None-Match") == etag)

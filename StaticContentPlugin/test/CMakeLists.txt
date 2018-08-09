@@ -21,6 +21,7 @@ target_include_directories(${This} PRIVATE $<TARGET_PROPERTY:WebServer,INCLUDE_D
 
 target_link_libraries(${This} PUBLIC
     gtest_main
+    Sha1
     StaticContentPlugin
 )
 
