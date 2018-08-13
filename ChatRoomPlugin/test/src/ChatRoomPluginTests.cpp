@@ -617,13 +617,13 @@ TEST_F(ChatRoomPluginTests, TellFromNonLurker) {
     messagesReceived[1].clear();
     message = Json::JsonObject({
         {"Type", "Tell"},
-        {"Tell", "42"},
+        {"Tell", "142"},
     });
     ws[1].SendText(message.ToEncoding());
     expectedResponse = Json::JsonObject({
         {"Type", "Tell"},
         {"Sender", "Alice"},
-        {"Tell", "42"},
+        {"Tell", "142"},
     });
     EXPECT_EQ(
         (std::vector< Json::Json >{
@@ -920,7 +920,7 @@ TEST_F(ChatRoomPluginTests, ChangeNickNameSingleConnectionNonLurkerToNonLurkerNo
     messagesReceived[1].clear();
     message = Json::JsonObject({
         {"Type", "Tell"},
-        {"Tell", "42"},
+        {"Tell", "142"},
     });
     ws[0].SendText(message.ToEncoding());
     EXPECT_EQ(
@@ -928,7 +928,7 @@ TEST_F(ChatRoomPluginTests, ChangeNickNameSingleConnectionNonLurkerToNonLurkerNo
             Json::JsonObject({
                 {"Type", "Tell"},
                 {"Sender", "PePe"},
-                {"Tell", "42"},
+                {"Tell", "142"},
             }),
         }),
         messagesReceived[1]
@@ -1082,7 +1082,7 @@ TEST_F(ChatRoomPluginTests, ChangeNickNameLurkerToLurker) {
 TEST_F(ChatRoomPluginTests, TellFromLurker) {
     auto message = Json::JsonObject({
         {"Type", "Tell"},
-        {"Tell", "42"},
+        {"Tell", "142"},
     });
     ws[0].SendText(message.ToEncoding());
     EXPECT_EQ(
@@ -1108,13 +1108,13 @@ TEST_F(ChatRoomPluginTests, TwoTellsTooQuickly) {
     messagesReceived[1].clear();
     message = Json::JsonObject({
         {"Type", "Tell"},
-        {"Tell", "42"},
+        {"Tell", "142"},
     });
     ws[0].SendText(message.ToEncoding());
     auto expectedResponse = Json::JsonObject({
         {"Type", "Tell"},
         {"Sender", "Bob"},
-        {"Tell", "42"},
+        {"Tell", "142"},
     });
     EXPECT_EQ(
         (std::vector< Json::Json >{
@@ -1200,6 +1200,82 @@ TEST_F(ChatRoomPluginTests, GetUsers) {
                     })},
                     {"Bob", Json::JsonObject({
                         {"Points", 5},
+                    })},
+                })},
+            }),
+        }),
+        messagesReceived[0]
+    );
+}
+
+TEST_F(ChatRoomPluginTests, FirstAnswerScores) {
+    // Bob and Alice join the room.
+    auto message = Json::JsonObject({
+        {"Type", "SetNickName"},
+        {"NickName", "Bob"},
+    });
+    ws[0].SendText(message.ToEncoding());
+    message = Json::JsonObject({
+        {"Type", "SetNickName"},
+        {"NickName", "Alice"},
+    });
+    ws[1].SendText(message.ToEncoding());
+
+    // Lurker tries to answer the current question.
+    message = Json::JsonObject({
+        {"Type", "Tell"},
+        {"Tell", "42"},
+    });
+    ws[2].SendText(message.ToEncoding());
+
+    // Bob answers the current question.
+    messagesReceived[0].clear();
+    messagesReceived[1].clear();
+    ws[0].SendText(message.ToEncoding());
+
+    // Alice answers the current question, but a little too late.
+    ws[1].SendText(message.ToEncoding());
+
+    // Expect both tells, but only Bob awarded a point.
+    EXPECT_EQ(
+        (std::vector< Json::Json >{
+            Json::JsonObject({
+                {"Type", "Tell"},
+                {"Sender", "Bob"},
+                {"Tell", "42"},
+            }),
+            Json::JsonObject({
+                {"Type", "Award"},
+                {"Awardee", "Bob"},
+                {"Award", 1},
+                {"Points", 6},
+            }),
+            Json::JsonObject({
+                {"Type", "Tell"},
+                {"Sender", "Alice"},
+                {"Tell", "42"},
+            }),
+        }),
+        messagesReceived[0]
+    );
+
+    // Get the user list and verify point totals
+    // are as expected.
+    messagesReceived[0].clear();
+    message = Json::JsonObject({
+        {"Type", "GetUsers"},
+    });
+    ws[0].SendText(message.ToEncoding());
+    ASSERT_EQ(
+        (std::vector< Json::Json >{
+            Json::JsonObject({
+                {"Type", "Users"},
+                {"Users", Json::JsonObject({
+                    {"Alice", Json::JsonObject({
+                        {"Points", 0},
+                    })},
+                    {"Bob", Json::JsonObject({
+                        {"Points", 6},
                     })},
                 })},
             }),

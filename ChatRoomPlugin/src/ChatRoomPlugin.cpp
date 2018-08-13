@@ -156,6 +156,17 @@ namespace {
          */
         unsigned int nextSessionId = 1;
 
+        /**
+         * This indicates whether or not a user has sent a tell
+         * with the correct answer to the current math question.
+         */
+        bool answeredCorrectly = false;
+
+        /**
+         * This is the correct answer to the current math question.
+         */
+        std::string answer = "42";
+
         // Methods
 
         /**
@@ -184,6 +195,28 @@ namespace {
                 workerWakeCondition.notify_all();
             }
             workerThread.join();
+        }
+
+        /**
+         * This function sends the given response to all users.
+         *
+         * @param[in] response
+         *     This is the response to send to all users.
+         */
+        void SendToAll(const std::string& response) {
+            for (auto& user: users) {
+                user.second.ws->SendText(response);
+            }
+        }
+
+        /**
+         * This function sends the given response to all users.
+         *
+         * @param[in] response
+         *     This is the response to send to all users.
+         */
+        void SendToAll(const Json::Json& response) {
+            SendToAll(response.ToEncoding());
         }
 
         /**
@@ -219,9 +252,7 @@ namespace {
                                 const auto responseEncoding = response.ToEncoding();
                                 auto usersCopy = users;
                                 lock.unlock();
-                                for (auto& user: usersCopy) {
-                                    user.second.ws->SendText(responseEncoding);
-                                }
+                                SendToAll(responseEncoding);
                                 lock.lock();
                             }
                         }
@@ -274,10 +305,7 @@ namespace {
                         {"Type", "Leave"},
                         {"NickName", oldNickname},
                     });
-                    const auto responseEncoding = response.ToEncoding();
-                    for (const auto& user: users) {
-                        user.second.ws->SendText(responseEncoding);
-                    }
+                    SendToAll(response);
                 }
             } else if (oldNickname == newNickname) {
                 setNickNameResult.Set("Success", true);
@@ -295,19 +323,13 @@ namespace {
                             {"Type", "Leave"},
                             {"NickName", oldNickname},
                         });
-                        const auto responseEncoding = response.ToEncoding();
-                        for (const auto& user: users) {
-                            user.second.ws->SendText(responseEncoding);
-                        }
+                        SendToAll(response);
                     }
                     const auto response = Json::JsonObject({
                         {"Type", "Join"},
                         {"NickName", newNickname},
                     });
-                    const auto responseEncoding = response.ToEncoding();
-                    for (auto& user: users) {
-                        user.second.ws->SendText(responseEncoding);
-                    }
+                    SendToAll(response);
                     setNickNameResult.Set("Success", true);
                     diagnosticMessageDelegate(
                         userEntry->second.diagnosticsSenderName,
@@ -392,9 +414,20 @@ namespace {
                 {"Tell", tell},
                 {"Sender", userEntry->second.nickname},
             });
-            const auto responseEncoding = response.ToEncoding();
-            for (auto& user: users) {
-                user.second.ws->SendText(responseEncoding);
+            SendToAll(response);
+            if (
+                !answeredCorrectly
+                && (tell == answer)
+            ) {
+                answeredCorrectly = true;
+                ++userEntry->second.points;
+                const auto response = Json::JsonObject({
+                    {"Type", "Award"},
+                    {"Awardee", userEntry->second.nickname},
+                    {"Award", 1},
+                    {"Points", userEntry->second.points},
+                });
+                SendToAll(response);
             }
         }
 
@@ -420,10 +453,7 @@ namespace {
                 {"Type", "AvailableNickNames"},
                 {"AvailableNickNames", availableNickNamesAsJson},
             });
-            const auto responseEncoding = response.ToEncoding();
-            for (auto& user: users) {
-                user.second.ws->SendText(responseEncoding);
-            }
+            SendToAll(response);
         }
 
         /**
@@ -688,6 +718,7 @@ extern "C" API void LoadPlugin(
         room.Stop();
         room.users.clear();
         room.usersHaveClosed = false;
+        room.answeredCorrectly = false;
         room.nextSessionId = 1;
         room.diagnosticMessageDelegate = nullptr;
         room.availableNickNames.clear();
