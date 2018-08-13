@@ -348,6 +348,12 @@ struct ChatRoomPluginTests
             {"space", CHAT_ROOM_PATH},
             {"nicknames", availableNicknames},
             {"tellTimeout", 1.0},
+            {
+                "initialPoints",
+                Json::JsonObject({
+                    {"Bob", 5},
+                })
+            },
         });
         LoadPlugin(
             &server,
@@ -1161,5 +1167,43 @@ TEST_F(ChatRoomPluginTests, TwoTellsTooQuickly) {
             expectedResponse,
         }),
         messagesReceived[1]
+    );
+}
+
+TEST_F(ChatRoomPluginTests, GetUsers) {
+    // Bob and Alice join the room.
+    auto message = Json::JsonObject({
+        {"Type", "SetNickName"},
+        {"NickName", "Bob"},
+    });
+    ws[0].SendText(message.ToEncoding());
+    message = Json::JsonObject({
+        {"Type", "SetNickName"},
+        {"NickName", "Alice"},
+    });
+    ws[1].SendText(message.ToEncoding());
+
+    // Get the user list and verify point totals
+    // are as expected.
+    messagesReceived[0].clear();
+    message = Json::JsonObject({
+        {"Type", "GetUsers"},
+    });
+    ws[0].SendText(message.ToEncoding());
+    ASSERT_EQ(
+        (std::vector< Json::Json >{
+            Json::JsonObject({
+                {"Type", "Users"},
+                {"Users", Json::JsonObject({
+                    {"Alice", Json::JsonObject({
+                        {"Points", 0},
+                    })},
+                    {"Bob", Json::JsonObject({
+                        {"Points", 5},
+                    })},
+                })},
+            }),
+        }),
+        messagesReceived[0]
     );
 }

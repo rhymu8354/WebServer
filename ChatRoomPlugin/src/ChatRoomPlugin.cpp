@@ -68,6 +68,11 @@ namespace {
          * that the user last sent a tell.
          */
         double lastTell = std::numeric_limits< double >::lowest();
+
+        /**
+         * This is the user's current score.
+         */
+        int points = 0;
     };
 
     /**
@@ -120,6 +125,18 @@ namespace {
          * but ready for assignment to users.
          */
         std::set< std::string > availableNickNames;
+
+        /**
+         * This is used to assign the initial point score for a user
+         * when they join the chat room.
+         *
+         * @note
+         *     This is a back door used by the chat room's unit test
+         *     framework, to make it easier to test the points system.
+         *     Normally, users will start at zero points each time
+         *     they connect.
+         */
+        std::map< std::string, int > initialPoints;
 
         /**
          * These are the users currently in the chat room,
@@ -271,6 +288,7 @@ namespace {
                 } else {
                     (void)availableNickNames.erase(availableNicknameEntry);
                     userEntry->second.nickname = newNickname;
+                    userEntry->second.points = initialPoints[newNickname];
                     if (!oldNickname.empty()) {
                         (void)availableNickNames.insert(oldNickname);
                         const auto response = Json::JsonObject({
@@ -409,6 +427,38 @@ namespace {
         }
 
         /**
+         * This method handles the "GetUsers" message from
+         * users in the chat room.
+         *
+         * @param[in] message
+         *     This is the content of the user message.
+         *
+         * @param[in] userEntry
+         *     This is the entry of the user who sent the message.
+         */
+        void GetUsers(
+            const Json::Json& message,
+            std::map< unsigned int, User >::iterator userEntry
+        ) {
+            auto response = Json::JsonObject({
+                {"Type", "Users"},
+            });
+            auto usersJson = Json::JsonObject({});
+            for (const auto& user: users) {
+                if (!user.second.nickname.empty()) {
+                    usersJson.Set(
+                        user.second.nickname,
+                        Json::JsonObject({
+                            {"Points", user.second.points},
+                        })
+                    );
+                }
+            }
+            response.Set("Users", usersJson);
+            userEntry->second.ws->SendText(response.ToEncoding());
+        }
+
+        /**
          * This is called whenever a text message is received from
          * a user in the chat room.
          *
@@ -436,6 +486,8 @@ namespace {
                 Tell(message, userEntry);
             } else if (message["Type"] == "GetAvailableNickNames") {
                 GetAvailableNickNames(message, userEntry);
+            } else if (message["Type"] == "GetUsers") {
+                GetUsers(message, userEntry);
             }
         }
 
@@ -598,6 +650,14 @@ extern "C" API void LoadPlugin(
     if (availableNickNamesJson.GetType() == Json::Json::Type::Array) {
         for (size_t i = 0; i < availableNickNamesJson.GetSize(); ++i) {
             (void)room.availableNickNames.insert(availableNickNamesJson[i]);
+        }
+    }
+
+    // Get initial points from configuration.
+    const auto initialPointsJson = configuration["initialPoints"];
+    if (initialPointsJson.GetType() == Json::Json::Type::Object) {
+        for (const auto nickname: initialPointsJson.GetKeys()) {
+            room.initialPoints[nickname] = initialPointsJson[nickname];
         }
     }
 
