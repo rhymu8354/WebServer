@@ -30,18 +30,6 @@
 namespace {
 
     /**
-     * This represents a registered user of the chat room.
-     */
-    struct Account {
-        /**
-         * This is the string that the user needs to present
-         * for the value of "password" when setting their nickname
-         * in order to link the user to the account.
-         */
-        std::string password;
-    };
-
-    /**
      * This represents one user in the chat room.
      */
     struct User {
@@ -109,6 +97,12 @@ namespace {
         bool stopWorker = false;
 
         /**
+         * These are the nicknames that are currently unallocated
+         * but ready for assignment to users.
+         */
+        std::set< std::string > availableNickNames;
+
+        /**
          * These are the users currently in the chat room,
          * keyed by session ID.
          */
@@ -125,12 +119,6 @@ namespace {
          * to a new user.
          */
         unsigned int nextSessionId = 1;
-
-        /**
-         * These are the registered users of the chat room,
-         * keyed by nickname.
-         */
-        std::map< std::string, Account > accounts;
 
         // Methods
 
@@ -186,14 +174,8 @@ namespace {
                             userEntry->second.wsDiagnosticsUnsubscribeDelegate();
                             closedUsers.push_back(std::move(userEntry->second));
                             userEntry = users.erase(userEntry);
-                            bool stillInRoom = false;
-                            for (const auto& user: users) {
-                                if (user.second.nickname == nickname) {
-                                    stillInRoom = true;
-                                    break;
-                                }
-                            }
-                            if (!stillInRoom) {
+                            if (!nickname.empty()) {
+                                (void)availableNickNames.insert(nickname);
                                 const auto response = Json::JsonObject({
                                     {"Type", "Leave"},
                                     {"NickName", nickname},
@@ -238,20 +220,7 @@ namespace {
             auto setNickNameResult = Json::JsonObject({
                 {"Type", "SetNickNameResult"},
             });
-            auto accountEntry = accounts.find(newNickname);
             if (newNickname.empty()) {
-                bool oldNickNameElsewhereInRoom = false;
-                for (auto& user: users) {
-                    if (!oldNickname.empty()) {
-                        if (
-                            (user.first != userEntry->first)
-                            && (user.second.nickname == oldNickname)
-                        ) {
-                            oldNickNameElsewhereInRoom = true;
-                            break;
-                        }
-                    }
-                }
                 userEntry->second.nickname.clear();
                 setNickNameResult.Set("Success", true);
                 if (!oldNickname.empty()) {
@@ -264,11 +233,7 @@ namespace {
                             newNickname.c_str()
                         )
                     );
-                }
-                if (
-                    !oldNickname.empty()
-                    && !oldNickNameElsewhereInRoom
-                ) {
+                    (void)availableNickNames.insert(oldNickname);
                     const auto response = Json::JsonObject({
                         {"Type", "Leave"},
                         {"NickName", oldNickname},
@@ -278,40 +243,26 @@ namespace {
                         user.second.ws->SendText(responseEncoding);
                     }
                 }
-            } else if (
-                (accountEntry == accounts.end())
-                || (accountEntry->second.password == password)
-            ) {
-                bool oldNickNameElsewhereInRoom = false;
-                bool newNickNameAlreadyInRoom = false;
-                for (auto& user: users) {
-                    if (user.second.nickname == newNickname) {
-                        newNickNameAlreadyInRoom = true;
-                    }
+            } else if (oldNickname == newNickname) {
+                setNickNameResult.Set("Success", true);
+            } else {
+                auto availableNicknameEntry = availableNickNames.find(newNickname);
+                if (availableNicknameEntry == availableNickNames.end()) {
+                    setNickNameResult.Set("Success", false);
+                } else {
+                    (void)availableNickNames.erase(availableNicknameEntry);
+                    userEntry->second.nickname = newNickname;
                     if (!oldNickname.empty()) {
-                        if (
-                            (user.first != userEntry->first)
-                            && (user.second.nickname == oldNickname)
-                        ) {
-                            oldNickNameElsewhereInRoom = true;
+                        (void)availableNickNames.insert(oldNickname);
+                        const auto response = Json::JsonObject({
+                            {"Type", "Leave"},
+                            {"NickName", oldNickname},
+                        });
+                        const auto responseEncoding = response.ToEncoding();
+                        for (const auto& user: users) {
+                            user.second.ws->SendText(responseEncoding);
                         }
                     }
-                }
-                userEntry->second.nickname = newNickname;
-                if (
-                    !oldNickname.empty()
-                    && !oldNickNameElsewhereInRoom
-                ) {
-                    const auto response = Json::JsonObject({
-                        {"Type", "Leave"},
-                        {"NickName", oldNickname},
-                    });
-                    const auto responseEncoding = response.ToEncoding();
-                    for (const auto& user: users) {
-                        user.second.ws->SendText(responseEncoding);
-                    }
-                }
-                if (!newNickNameAlreadyInRoom) {
                     const auto response = Json::JsonObject({
                         {"Type", "Join"},
                         {"NickName", newNickname},
@@ -320,11 +271,7 @@ namespace {
                     for (auto& user: users) {
                         user.second.ws->SendText(responseEncoding);
                     }
-                }
-                auto& account = accounts[newNickname];
-                account.password = password;
-                setNickNameResult.Set("Success", true);
-                if (oldNickname != newNickname) {
+                    setNickNameResult.Set("Success", true);
                     diagnosticMessageDelegate(
                         userEntry->second.diagnosticsSenderName,
                         1,
@@ -335,8 +282,6 @@ namespace {
                         )
                     );
                 }
-            } else {
-                setNickNameResult.Set("Success", false);
             }
             userEntry->second.ws->SendText(setNickNameResult.ToEncoding());
         }
@@ -393,10 +338,45 @@ namespace {
             if (tell.empty()) {
                 return;
             }
+            intmax_t tellAsNumber;
+            if (
+                SystemAbstractions::ToInteger(tell, tellAsNumber)
+                != SystemAbstractions::ToIntegerResult::Success
+            ) {
+                return;
+            }
             const auto response = Json::JsonObject({
                 {"Type", "Tell"},
                 {"Tell", tell},
                 {"Sender", userEntry->second.nickname},
+            });
+            const auto responseEncoding = response.ToEncoding();
+            for (auto& user: users) {
+                user.second.ws->SendText(responseEncoding);
+            }
+        }
+
+        /**
+         * This method handles the "GetAvailableNickNames" message from
+         * users in the chat room.
+         *
+         * @param[in] message
+         *     This is the content of the user message.
+         *
+         * @param[in] userEntry
+         *     This is the entry of the user who sent the message.
+         */
+        void GetAvailableNickNames(
+            const Json::Json& message,
+            std::map< unsigned int, User >::iterator userEntry
+        ) {
+            auto availableNickNamesAsJson = Json::JsonArray({});
+            for (const auto& nickname: availableNickNames) {
+                availableNickNamesAsJson.Add(nickname);
+            }
+            const auto response = Json::JsonObject({
+                {"Type", "AvailableNickNames"},
+                {"AvailableNickNames", availableNickNamesAsJson},
             });
             const auto responseEncoding = response.ToEncoding();
             for (auto& user: users) {
@@ -430,6 +410,8 @@ namespace {
                 GetNickNames(message, userEntry);
             } else if (message["Type"] == "Tell") {
                 Tell(message, userEntry);
+            } else if (message["Type"] == "GetAvailableNickNames") {
+                GetAvailableNickNames(message, userEntry);
             }
         }
 
@@ -587,6 +569,14 @@ extern "C" API void LoadPlugin(
     auto space = uri.GetPath();
     (void)space.erase(space.begin());
 
+    // Get available nicknames from configuration.
+    auto availableNickNamesJson = configuration["nicknames"];
+    if (availableNickNamesJson.GetType() == Json::Json::Type::Array) {
+        for (size_t i = 0; i < availableNickNamesJson.GetSize(); ++i) {
+            (void)room.availableNickNames.insert(availableNickNamesJson[i]);
+        }
+    }
+
     // Register to handle requests for the space we're serving.
     room.diagnosticMessageDelegate = diagnosticMessageDelegate;
     room.Start();
@@ -606,10 +596,10 @@ extern "C" API void LoadPlugin(
         unregistrationDelegate();
         room.Stop();
         room.users.clear();
-        room.accounts.clear();
         room.usersHaveClosed = false;
         room.nextSessionId = 1;
         room.diagnosticMessageDelegate = nullptr;
+        room.availableNickNames.clear();
     };
 }
 
