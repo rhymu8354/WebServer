@@ -25,54 +25,86 @@ extern "C" API void LoadPlugin(
     std::function< void() >& unloadDelegate
 );
 
-struct MockServer
-    : public Http::IServer
-{
-    // Properties
+namespace {
 
     /**
-     * This is the resource subspace path that the unit under
-     * test has registered.
+     * This is a fake time-keeper which is used to test the server.
      */
-    std::vector< std::string > registeredResourceSubspacePath;
+    struct MockTimeKeeper
+        : public Http::TimeKeeper
+    {
+        // Properties
 
-    /**
-     * This is the delegate that the unit under test has registered
-     * to be called to handle resource requests.
-     */
-    ResourceDelegate registeredResourceDelegate;
+        double currentTime = 0.0;
 
-    // Methods
+        // Methods
 
-    // IServer
-public:
-    virtual SystemAbstractions::DiagnosticsSender::UnsubscribeDelegate SubscribeToDiagnostics(
-        SystemAbstractions::DiagnosticsSender::DiagnosticMessageDelegate delegate,
-        size_t minLevel = 0
-    ) override {
-        return []{};
-    }
+        // Http::TimeKeeper
 
-    virtual std::string GetConfigurationItem(const std::string& key) override {
-        return "";
-    }
+        virtual double GetCurrentTime() override {
+            return currentTime;
+        }
+    };
 
-    virtual void SetConfigurationItem(
-        const std::string& key,
-        const std::string& value
-    ) override {
-    }
+    struct MockServer
+        : public Http::IServer
+    {
+        // Properties
 
-    virtual UnregistrationDelegate RegisterResource(
-        const std::vector< std::string >& resourceSubspacePath,
-        ResourceDelegate resourceDelegate
-    ) override {
-        registeredResourceSubspacePath = resourceSubspacePath;
-        registeredResourceDelegate = resourceDelegate;
-        return []{};
-    }
-};
+        /**
+         * This is the resource subspace path that the unit under
+         * test has registered.
+         */
+        std::vector< std::string > registeredResourceSubspacePath;
 
+        /**
+         * This is the delegate that the unit under test has registered
+         * to be called to handle resource requests.
+         */
+        ResourceDelegate registeredResourceDelegate;
+
+        /**
+         * This is the time keeper used in the tests to simulate
+         * the progress of time.
+         */
+        std::shared_ptr< MockTimeKeeper > timeKeeper = std::make_shared< MockTimeKeeper >();
+
+        // Methods
+
+        // IServer
+    public:
+        virtual SystemAbstractions::DiagnosticsSender::UnsubscribeDelegate SubscribeToDiagnostics(
+            SystemAbstractions::DiagnosticsSender::DiagnosticMessageDelegate delegate,
+            size_t minLevel = 0
+        ) override {
+            return []{};
+        }
+
+        virtual std::string GetConfigurationItem(const std::string& key) override {
+            return "";
+        }
+
+        virtual void SetConfigurationItem(
+            const std::string& key,
+            const std::string& value
+        ) override {
+        }
+
+        virtual UnregistrationDelegate RegisterResource(
+            const std::vector< std::string >& resourceSubspacePath,
+            ResourceDelegate resourceDelegate
+        ) override {
+            registeredResourceSubspacePath = resourceSubspacePath;
+            registeredResourceDelegate = resourceDelegate;
+            return []{};
+        }
+
+        virtual std::shared_ptr< Http::TimeKeeper > GetTimeKeeper() override {
+            return timeKeeper;
+        }
+    };
+
+}
 
 /**
  * This is the test fixture for these tests, providing common
