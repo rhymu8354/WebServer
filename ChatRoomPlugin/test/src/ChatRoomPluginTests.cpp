@@ -44,6 +44,25 @@ namespace {
     constexpr size_t NUM_MOCK_CLIENTS = 3;
 
     /**
+     * This is a fake time-keeper which is used to test the server.
+     */
+    struct MockTimeKeeper
+        : public Http::TimeKeeper
+    {
+        // Properties
+
+        double currentTime = 0.0;
+
+        // Methods
+
+        // Http::TimeKeeper
+
+        virtual double GetCurrentTime() override {
+            return currentTime;
+        }
+    };
+
+    /**
      * This simulates the actual web server hosting the chat room.
      */
     struct MockServer
@@ -62,6 +81,12 @@ namespace {
          * to be called to handle resource requests.
          */
         ResourceDelegate registeredResourceDelegate;
+
+        /**
+         * This is the time keeper used in the tests to simulate
+         * the progress of time.
+         */
+        std::shared_ptr< MockTimeKeeper > timeKeeper = std::make_shared< MockTimeKeeper >();
 
         // Methods
 
@@ -91,6 +116,10 @@ namespace {
             registeredResourceSubspacePath = resourceSubspacePath;
             registeredResourceDelegate = resourceDelegate;
             return []{};
+        }
+
+        virtual std::shared_ptr< Http::TimeKeeper > GetTimeKeeper() override {
+            return timeKeeper;
         }
     };
 
@@ -318,6 +347,7 @@ struct ChatRoomPluginTests
         const auto config = Json::JsonObject({
             {"space", CHAT_ROOM_PATH},
             {"nicknames", availableNicknames},
+            {"tellTimeout", 1.0},
         });
         LoadPlugin(
             &server,
@@ -1056,6 +1086,79 @@ TEST_F(ChatRoomPluginTests, TellFromLurker) {
     );
     EXPECT_EQ(
         (std::vector< Json::Json >{
+        }),
+        messagesReceived[1]
+    );
+}
+
+TEST_F(ChatRoomPluginTests, TwoTellsTooQuickly) {
+    // Register as "Bob" and then say something.
+    auto message = Json::JsonObject({
+        {"Type", "SetNickName"},
+        {"NickName", "Bob"},
+    });
+    ws[0].SendText(message.ToEncoding());
+    messagesReceived[0].clear();
+    messagesReceived[1].clear();
+    message = Json::JsonObject({
+        {"Type", "Tell"},
+        {"Tell", "42"},
+    });
+    ws[0].SendText(message.ToEncoding());
+    auto expectedResponse = Json::JsonObject({
+        {"Type", "Tell"},
+        {"Sender", "Bob"},
+        {"Tell", "42"},
+    });
+    EXPECT_EQ(
+        (std::vector< Json::Json >{
+            expectedResponse,
+        }),
+        messagesReceived[0]
+    );
+    EXPECT_EQ(
+        (std::vector< Json::Json >{
+            expectedResponse,
+        }),
+        messagesReceived[1]
+    );
+
+    // Advance time one half second, which is
+    // half the tell cool-down time.
+    server.timeKeeper->currentTime += 0.5;
+
+    // Say something else, and expect it to be ignored.
+    messagesReceived[0].clear();
+    messagesReceived[1].clear();
+    ws[0].SendText(message.ToEncoding());
+    EXPECT_EQ(
+        (std::vector< Json::Json >{
+        }),
+        messagesReceived[0]
+    );
+    EXPECT_EQ(
+        (std::vector< Json::Json >{
+        }),
+        messagesReceived[1]
+    );
+
+    // Advance time another half second, which will take
+    // Bob's tell off cool-down.
+    server.timeKeeper->currentTime += 0.5;
+
+    // Say something else, and expect it to be sent.
+    messagesReceived[0].clear();
+    messagesReceived[1].clear();
+    ws[0].SendText(message.ToEncoding());
+    EXPECT_EQ(
+        (std::vector< Json::Json >{
+            expectedResponse,
+        }),
+        messagesReceived[0]
+    );
+    EXPECT_EQ(
+        (std::vector< Json::Json >{
+            expectedResponse,
         }),
         messagesReceived[1]
     );
