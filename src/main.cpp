@@ -219,16 +219,22 @@ namespace {
      *     This contains variables set through the operating system
      *     environment or the command-line arguments.
      *
+     * @param[in] diagnosticMessageDelegate
+     *     This is the function to call to publish any diagnostic messages.
+     *
      * @return
      *     An indication of whether or not the function succeeded is returned.
      */
     bool ConfigureAndStartServer(
         Http::Server& server,
         const Json::Json& configuration,
-        const Environment& environment
+        const Environment& environment,
+        SystemAbstractions::DiagnosticsSender::DiagnosticMessageDelegate diagnosticMessageDelegate
     ) {
+        auto transport = std::make_shared< HttpNetworkTransport::HttpServerNetworkTransport >();
+        transport->SubscribeToDiagnostics(diagnosticMessageDelegate, 0);
         Http::Server::MobilizationDependencies deps;
-        deps.transport = std::make_shared< HttpNetworkTransport::HttpServerNetworkTransport >();
+        deps.transport = transport;
         deps.timeKeeper = std::make_shared< TimeKeeper >();
         for (const auto& key: configuration["server"].GetKeys()) {
             server.SetConfigurationItem(key, configuration["server"][key]);
@@ -355,7 +361,7 @@ int main(int argc, char* argv[]) {
     const auto diagnosticsPublisher = SystemAbstractions::DiagnosticsStreamReporter(stdout, stderr);
     const auto diagnosticsSubscription = server.SubscribeToDiagnostics(diagnosticsPublisher);
     const auto configuration = ReadConfiguration(environment);
-    if (!ConfigureAndStartServer(server, configuration, environment)) {
+    if (!ConfigureAndStartServer(server, configuration, environment, diagnosticsPublisher)) {
         return EXIT_FAILURE;
     }
     printf("Web server up and running.\n");
