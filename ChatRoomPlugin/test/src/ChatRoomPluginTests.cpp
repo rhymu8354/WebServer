@@ -31,6 +31,13 @@ extern "C" API void LoadPlugin(
     std::function< void() >& unloadDelegate
 );
 
+/*
+ * These are back doors into the unit under test,
+ * used to set up the conditions for the test.
+ */
+extern "C" API void SetNextAnswer(const std::string&);
+extern "C" API void SetAnsweredCorrectly();
+
 namespace {
 
     /**
@@ -1221,6 +1228,9 @@ TEST_F(ChatRoomPluginTests, FirstAnswerScores) {
     });
     ws[1].SendText(message.ToEncoding());
 
+    // Post the next challenge in the room.
+    SetNextAnswer("42");
+
     // Lurker tries to answer the current question.
     message = Json::JsonObject({
         {"Type", "Tell"},
@@ -1246,7 +1256,7 @@ TEST_F(ChatRoomPluginTests, FirstAnswerScores) {
             }),
             Json::JsonObject({
                 {"Type", "Award"},
-                {"Awardee", "Bob"},
+                {"Subject", "Bob"},
                 {"Award", 1},
                 {"Points", 6},
             }),
@@ -1276,6 +1286,105 @@ TEST_F(ChatRoomPluginTests, FirstAnswerScores) {
                     })},
                     {"Bob", Json::JsonObject({
                         {"Points", 6},
+                    })},
+                })},
+            }),
+        }),
+        messagesReceived[0]
+    );
+}
+
+TEST_F(ChatRoomPluginTests, IncorrectAnswersPenalizedBeforeCorrectAnswer) {
+    // Bob and Alice join the room.
+    auto message = Json::JsonObject({
+        {"Type", "SetNickName"},
+        {"NickName", "Bob"},
+    });
+    ws[0].SendText(message.ToEncoding());
+    message = Json::JsonObject({
+        {"Type", "SetNickName"},
+        {"NickName", "Alice"},
+    });
+    ws[1].SendText(message.ToEncoding());
+
+    // Post the next challenge in the room.
+    SetNextAnswer("42");
+
+    // Bob answers the current question incorrectly.
+    messagesReceived[0].clear();
+    messagesReceived[1].clear();
+    message = Json::JsonObject({
+        {"Type", "Tell"},
+        {"Tell", "41"},
+    });
+    ws[0].SendText(message.ToEncoding());
+
+    // Alice answers the current question correctly.
+    message = Json::JsonObject({
+        {"Type", "Tell"},
+        {"Tell", "42"},
+    });
+    ws[1].SendText(message.ToEncoding());
+
+    // Bob answers the last question correctly, but a little too late.
+    server.timeKeeper->currentTime += 1.0;
+    message = Json::JsonObject({
+        {"Type", "Tell"},
+        {"Tell", "42"},
+    });
+    ws[0].SendText(message.ToEncoding());
+
+    // Expect both tells, but only Bob awarded a point.
+    EXPECT_EQ(
+        (std::vector< Json::Json >{
+            Json::JsonObject({
+                {"Type", "Tell"},
+                {"Sender", "Bob"},
+                {"Tell", "41"},
+            }),
+            Json::JsonObject({
+                {"Type", "Penalty"},
+                {"Subject", "Bob"},
+                {"Penalty", 1},
+                {"Points", 4},
+            }),
+            Json::JsonObject({
+                {"Type", "Tell"},
+                {"Sender", "Alice"},
+                {"Tell", "42"},
+            }),
+            Json::JsonObject({
+                {"Type", "Award"},
+                {"Subject", "Alice"},
+                {"Award", 1},
+                {"Points", 1},
+            }),
+            Json::JsonObject({
+                {"Type", "Tell"},
+                {"Sender", "Bob"},
+                {"Tell", "42"},
+            }),
+        }),
+        messagesReceived[0]
+    );
+
+    // Get the user list and verify point totals
+    // are as expected.
+    messagesReceived[0].clear();
+    message = Json::JsonObject({
+        {"Type", "GetUsers"},
+    });
+    ws[0].SendText(message.ToEncoding());
+    ASSERT_EQ(
+        (std::vector< Json::Json >{
+            Json::JsonObject({
+                {"Type", "Users"},
+                {"Users", Json::JsonObject({
+                    {"Alice", Json::JsonObject({
+                        {"Points", 1},
+                    })},
+                    {"Bob", Json::JsonObject({
+                        {"Points", 4},
                     })},
                 })},
             }),

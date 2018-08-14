@@ -415,19 +415,27 @@ namespace {
                 {"Sender", userEntry->second.nickname},
             });
             SendToAll(response);
-            if (
-                !answeredCorrectly
-                && (tell == answer)
-            ) {
-                answeredCorrectly = true;
-                ++userEntry->second.points;
-                const auto response = Json::JsonObject({
-                    {"Type", "Award"},
-                    {"Awardee", userEntry->second.nickname},
-                    {"Award", 1},
-                    {"Points", userEntry->second.points},
-                });
-                SendToAll(response);
+            if (!answeredCorrectly) {
+                if (tell == answer) {
+                    answeredCorrectly = true;
+                    ++userEntry->second.points;
+                    const auto response = Json::JsonObject({
+                        {"Type", "Award"},
+                        {"Subject", userEntry->second.nickname},
+                        {"Award", 1},
+                        {"Points", userEntry->second.points},
+                    });
+                    SendToAll(response);
+                } else {
+                    --userEntry->second.points;
+                    const auto response = Json::JsonObject({
+                        {"Type", "Penalty"},
+                        {"Subject", userEntry->second.nickname},
+                        {"Penalty", 1},
+                        {"Points", userEntry->second.points},
+                    });
+                    SendToAll(response);
+                }
             }
         }
 
