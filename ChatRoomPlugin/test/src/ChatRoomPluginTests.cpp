@@ -35,8 +35,12 @@ extern "C" API void LoadPlugin(
  * These are back doors into the unit under test,
  * used to set up the conditions for the test.
  */
-extern "C" API void SetNextAnswer(const std::string&);
-extern "C" API void SetAnsweredCorrectly();
+extern API std::vector< int > GetNextQuestionComponents();
+extern API std::string GetNextQuestion();
+extern API std::string GetNextAnswer();
+extern API void SetNextAnswer(const std::string&);
+extern API void SetAnsweredCorrectly();
+extern API void AwaitNextQuestion();
 
 namespace {
 
@@ -355,6 +359,13 @@ struct ChatRoomPluginTests
             {"space", CHAT_ROOM_PATH},
             {"nicknames", availableNicknames},
             {"tellTimeout", 1.0},
+            {
+                "mathQuiz",
+                Json::JsonObject({
+                    {"minCoolDown", 10.0},
+                    {"maxCoolDown", 10.0},
+                })
+            },
             {
                 "initialPoints",
                 Json::JsonObject({
@@ -1391,4 +1402,76 @@ TEST_F(ChatRoomPluginTests, IncorrectAnswersPenalizedBeforeCorrectAnswer) {
         }),
         messagesReceived[0]
     );
+}
+
+TEST_F(ChatRoomPluginTests, MathQuestionPostedWhenNotOnCooldown) {
+    // Bob joins the room.
+    auto message = Json::JsonObject({
+        {"Type", "SetNickName"},
+        {"NickName", "Bob"},
+    });
+    ws[0].SendText(message.ToEncoding());
+
+    // Advance the time so that the next math question will
+    // have been posted.
+    server.timeKeeper->currentTime += 11.0;
+    AwaitNextQuestion();
+
+    // Bob answers the current question.
+    messagesReceived[0].clear();
+    messagesReceived[1].clear();
+    const auto question = GetNextQuestion();
+    const auto answer = GetNextAnswer();
+    message = Json::JsonObject({
+        {"Type", "Tell"},
+        {"Tell", answer},
+    });
+    ws[0].SendText(message.ToEncoding());
+    EXPECT_EQ(
+        (std::vector< Json::Json >{
+            Json::JsonObject({
+                {"Type", "Tell"},
+                {"Sender", "MathBot2000"},
+                {"Tell", question},
+            }),
+            Json::JsonObject({
+                {"Type", "Tell"},
+                {"Sender", "Bob"},
+                {"Tell", answer},
+            }),
+            Json::JsonObject({
+                {"Type", "Award"},
+                {"Subject", "Bob"},
+                {"Award", 1},
+                {"Points", 6},
+            }),
+        }),
+        messagesReceived[0]
+    );
+}
+
+TEST_F(ChatRoomPluginTests, DifferentAnswersEachMathQuestion) {
+    std::string lastQuestion, lastAnswer;
+    for (size_t i = 0; i < 10; ++i) {
+        server.timeKeeper->currentTime = (i + 1) * 10.0 + 1.0;
+        AwaitNextQuestion();
+        const auto questionComponents = GetNextQuestionComponents();
+        const auto question = GetNextQuestion();
+        const auto answer = GetNextAnswer();
+        ASSERT_EQ(3, questionComponents.size());
+        ASSERT_EQ(
+            SystemAbstractions::sprintf(
+                "What is %d * %d + %d?",
+                questionComponents[0],
+                questionComponents[1],
+                questionComponents[2]
+            ),
+            question
+        );
+        ASSERT_NE(lastQuestion, question) << i;
+        ASSERT_NE(lastAnswer, answer);
+        lastQuestion = question;
+        lastAnswer = answer;
+        SetAnsweredCorrectly();
+    }
 }

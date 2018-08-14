@@ -7,6 +7,7 @@
  * © 2018 by Richard Walters
  */
 
+#include <algorithm>
 #include <condition_variable>
 #include <functional>
 #include <Http/Server.hpp>
@@ -15,10 +16,14 @@
 #include <limits>
 #include <map>
 #include <mutex>
+#include <random>
 #include <set>
+#include <stdlib.h>
 #include <string>
 #include <SystemAbstractions/StringExtensions.hpp>
 #include <thread>
+#include <time.h>
+#include <vector>
 #include <WebServer/PluginEntryPoint.hpp>
 #include <WebSockets/WebSocket.hpp>
 
@@ -29,6 +34,12 @@
 #endif /* _WIN32 / POSIX */
 
 namespace {
+
+    /**
+     * This is the number of milliseconds to wait between rounds of polling
+     * in the worker thread of the chat room.
+     */
+    constexpr unsigned int WORKER_POLLING_PERIOD_MILLISECONDS = 50;
 
     /**
      * This represents one user in the chat room.
@@ -90,6 +101,11 @@ namespace {
          * This points back to the web server hosting the chat room.
          */
         Http::IServer* server = nullptr;
+
+        /**
+         * This is used by MathBot2000 to generate the math questions.
+         */
+        std::mt19937 generator;
 
         /**
          * This is the function to call to deliver diagnostic
@@ -163,9 +179,43 @@ namespace {
         bool answeredCorrectly = true;
 
         /**
+         * This is the time (according to the time keeper) when
+         * the next math question should be asked.
+         */
+        double nextQuestionTime = std::numeric_limits< double >::max();
+
+        /**
+         * This is the minimum cooldown time in seconds between
+         * when two consecutive questions are asked.
+         */
+        double minQuestionCooldown = 10.0;
+
+        /**
+         * This is the maximum cooldown time in seconds between
+         * when two consecutive questions are asked.
+         */
+        double maxQuestionCooldown = 30.0;
+
+        /**
+         * These are the components of the current math question.
+         */
+        std::vector< int > questionComponents;
+
+        /**
+         * This is the current math question.
+         */
+        std::string question;
+
+        /**
          * This is the correct answer to the current math question.
          */
         std::string answer;
+
+        /**
+         * This is used to issue notifications when the current
+         * math question has changed.
+         */
+        std::condition_variable answerChangedCondition;
 
         // Methods
 
@@ -178,6 +228,9 @@ namespace {
                 return;
             }
             stopWorker = false;
+            generator.seed((int)time(NULL));
+            nextQuestionTime = server->GetTimeKeeper()->GetCurrentTime();
+            CooldownNextQuestion();
             workerThread = std::thread(&Room::Worker, this);
         }
 
@@ -195,6 +248,16 @@ namespace {
                 workerWakeCondition.notify_all();
             }
             workerThread.join();
+        }
+
+        /**
+         * This method sets the time the next math question will be asked.
+         */
+        void CooldownNextQuestion() {
+            nextQuestionTime += std::uniform_real_distribution<>(
+                minQuestionCooldown,
+                maxQuestionCooldown
+            )(generator);
         }
 
         /**
@@ -226,8 +289,9 @@ namespace {
         void Worker() {
             std::unique_lock< decltype(mutex) > lock(mutex);
             while (!stopWorker) {
-                workerWakeCondition.wait(
+                workerWakeCondition.wait_for(
                     lock,
+                    std::chrono::milliseconds(WORKER_POLLING_PERIOD_MILLISECONDS),
                     [this]{ return stopWorker || usersHaveClosed; }
                 );
                 if (usersHaveClosed) {
@@ -263,6 +327,39 @@ namespace {
                         closedUsers.clear();
                         lock.lock();
                     }
+                }
+                const auto now = server->GetTimeKeeper()->GetCurrentTime();
+                if (now >= nextQuestionTime) {
+                    const auto lastAnswer = answer;
+                    do {
+                        questionComponents.resize(3);
+                        questionComponents[0] = std::uniform_int_distribution<>(2, 10)(generator);
+                        questionComponents[1] = std::uniform_int_distribution<>(2, 10)(generator);
+                        questionComponents[2] = std::uniform_int_distribution<>(2, 97)(generator);
+                        question = SystemAbstractions::sprintf(
+                            "What is %d * %d + %d?",
+                            questionComponents[0],
+                            questionComponents[1],
+                            questionComponents[2]
+                        );
+                        answer = SystemAbstractions::sprintf(
+                            "%d",
+                            questionComponents[0] * questionComponents[1] + questionComponents[2]
+                        );
+                    } while (answer == lastAnswer);
+                    answeredCorrectly = false;
+                    CooldownNextQuestion();
+                    const auto post = Json::JsonObject({
+                        {"Type", "Tell"},
+                        {"Sender", "MathBot2000"},
+                        {"Tell", question},
+                    });
+                    const auto postEncoding = post.ToEncoding();
+                    auto usersCopy = users;
+                    answerChangedCondition.notify_all();
+                    lock.unlock();
+                    SendToAll(postEncoding);
+                    lock.lock();
                 }
             }
         }
@@ -691,6 +788,23 @@ extern "C" API void LoadPlugin(
         }
     }
 
+    // Allow math question cooldown period range
+    // to be configured.
+    const auto mathQuiz = configuration["mathQuiz"];
+    if (mathQuiz.GetType() == Json::Json::Type::Object) {
+        const auto minCooldownJson = mathQuiz["minCoolDown"];
+        if (minCooldownJson.GetType() == Json::Json::Type::FloatingPoint) {
+            room.minQuestionCooldown = minCooldownJson;
+        }
+        const auto maxCooldownJson = mathQuiz["maxCoolDown"];
+        if (maxCooldownJson.GetType() == Json::Json::Type::FloatingPoint) {
+            room.maxQuestionCooldown = maxCooldownJson;
+        }
+    }
+    if (room.minQuestionCooldown > room.maxQuestionCooldown) {
+        std::swap(room.minQuestionCooldown, room.maxQuestionCooldown);
+    }
+
     // Get initial points from configuration.
     const auto initialPointsJson = configuration["initialPoints"];
     if (initialPointsJson.GetType() == Json::Json::Type::Object) {
@@ -735,22 +849,73 @@ extern "C" API void LoadPlugin(
 }
 
 /**
+ * This is a back door used during testing, to get the next math question.
+ *
+ * @return
+ *     The next math question is returned.
+ */
+extern API std::vector< int > GetNextQuestionComponents() {
+    return room.questionComponents;
+}
+
+/**
+ * This is a back door used during testing, to get the next math question.
+ *
+ * @return
+ *     The next math question is returned.
+ */
+extern API std::string GetNextQuestion() {
+    return room.question;
+}
+
+/**
+ * This is a back door used during testing, to get the answer
+ * to the next math question.
+ *
+ * @return
+ *     The answer to the next math question is returned.
+ */
+extern API std::string GetNextAnswer() {
+    return room.answer;
+}
+
+/**
  * This is a back door used during testing, to set the answer
  * to the next math question.
  *
  * @param[in] answer
  *     This is the answer to the next math question.
  */
-extern "C" API void SetNextAnswer(const std::string& answer) {
+extern API void SetNextAnswer(const std::string& answer) {
+    std::lock_guard< decltype(room.mutex) > lock(room.mutex);
     room.answer = answer;
     room.answeredCorrectly = false;
+    room.answerChangedCondition.notify_all();
 }
+
 /**
  * This is a back door used during testing, to set the flag
  * which indicates that the current math question was answered correctly.
  */
-extern "C" API void SetAnsweredCorrectly() {
+extern API void SetAnsweredCorrectly() {
+    std::lock_guard< decltype(room.mutex) > lock(room.mutex);
     room.answeredCorrectly = true;
+}
+
+/**
+ * This is a back door used during testing, to wait for the
+ * next math question to be asked.
+ */
+extern API void AwaitNextQuestion() {
+    std::unique_lock< decltype(room.mutex) > lock(room.mutex);
+    Room* roomPtr = &room;
+    (void)room.answerChangedCondition.wait_for(
+        lock,
+        std::chrono::seconds(1),
+        [roomPtr]{
+            return !roomPtr->answeredCorrectly;
+        }
+    );
 }
 
 /**
