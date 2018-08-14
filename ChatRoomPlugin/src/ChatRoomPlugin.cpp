@@ -727,6 +727,25 @@ extern "C" API void LoadPlugin(
 }
 
 /**
+ * This is a back door used during testing, to set the answer
+ * to the next math question.
+ *
+ * @param[in] answer
+ *     This is the answer to the next math question.
+ */
+extern "C" API void SetNextAnswer(const std::string& answer) {
+    room.answer = answer;
+    room.answeredCorrectly = false;
+}
+/**
+ * This is a back door used during testing, to set the flag
+ * which indicates that the current math question was answered correctly.
+ */
+extern "C" API void SetAnsweredCorrectly() {
+    room.answeredCorrectly = true;
+}
+
+/**
  * This checks to make sure the plug-in entry point signature
  * matches the entry point type declared in the web server API.
  */
