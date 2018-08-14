@@ -160,12 +160,12 @@ namespace {
          * This indicates whether or not a user has sent a tell
          * with the correct answer to the current math question.
          */
-        bool answeredCorrectly = false;
+        bool answeredCorrectly = true;
 
         /**
          * This is the correct answer to the current math question.
          */
-        std::string answer = "42";
+        std::string answer;
 
         // Methods
 
@@ -718,7 +718,7 @@ extern "C" API void LoadPlugin(
         room.Stop();
         room.users.clear();
         room.usersHaveClosed = false;
-        room.answeredCorrectly = false;
+        room.answeredCorrectly = true;
         room.nextSessionId = 1;
         room.diagnosticMessageDelegate = nullptr;
         room.availableNickNames.clear();
