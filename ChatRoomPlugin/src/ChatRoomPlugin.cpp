@@ -578,12 +578,12 @@ namespace {
             auto response = Json::JsonObject({
                 {"Type", "Users"},
             });
-            auto usersJson = Json::JsonObject({});
+            auto usersJson = Json::JsonArray({});
             for (const auto& user: users) {
                 if (!user.second.nickname.empty()) {
-                    usersJson.Set(
-                        user.second.nickname,
+                    usersJson.Add(
                         Json::JsonObject({
+                            {"Nickname", user.second.nickname},
                             {"Points", user.second.points},
                         })
                     );

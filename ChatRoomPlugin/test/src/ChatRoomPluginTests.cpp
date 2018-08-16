@@ -1212,13 +1212,15 @@ TEST_F(ChatRoomPluginTests, GetUsers) {
         (std::vector< Json::Json >{
             Json::JsonObject({
                 {"Type", "Users"},
-                {"Users", Json::JsonObject({
-                    {"Alice", Json::JsonObject({
-                        {"Points", 0},
-                    })},
-                    {"Bob", Json::JsonObject({
+                {"Users", Json::JsonArray({
+                    Json::JsonObject({
+                        {"Nickname", "Bob"},
                         {"Points", 5},
-                    })},
+                    }),
+                    Json::JsonObject({
+                        {"Nickname", "Alice"},
+                        {"Points", 0},
+                    }),
                 })},
             }),
         }),
@@ -1291,13 +1293,15 @@ TEST_F(ChatRoomPluginTests, FirstAnswerScores) {
         (std::vector< Json::Json >{
             Json::JsonObject({
                 {"Type", "Users"},
-                {"Users", Json::JsonObject({
-                    {"Alice", Json::JsonObject({
-                        {"Points", 0},
-                    })},
-                    {"Bob", Json::JsonObject({
+                {"Users", Json::JsonArray({
+                    Json::JsonObject({
+                        {"Nickname", "Bob"},
                         {"Points", 6},
-                    })},
+                    }),
+                    Json::JsonObject({
+                        {"Nickname", "Alice"},
+                        {"Points", 0},
+                    }),
                 })},
             }),
         }),
@@ -1390,13 +1394,15 @@ TEST_F(ChatRoomPluginTests, IncorrectAnswersPenalizedBeforeCorrectAnswer) {
         (std::vector< Json::Json >{
             Json::JsonObject({
                 {"Type", "Users"},
-                {"Users", Json::JsonObject({
-                    {"Alice", Json::JsonObject({
-                        {"Points", 1},
-                    })},
-                    {"Bob", Json::JsonObject({
+                {"Users", Json::JsonArray({
+                    Json::JsonObject({
+                        {"Nickname", "Bob"},
                         {"Points", 4},
-                    })},
+                    }),
+                    Json::JsonObject({
+                        {"Nickname", "Alice"},
+                        {"Points", 1},
+                    }),
                 })},
             }),
         }),
