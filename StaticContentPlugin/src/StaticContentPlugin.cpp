@@ -125,7 +125,29 @@ extern "C" API void LoadPlugin(
                                 buffer.end()
                             );
                         }
-                        response.headers.AddHeader("Content-Type", "text/html");
+                        if (
+                            (path.length() >= 5)
+                            && (path.substr(path.length() - 5) == ".html")
+                        ) {
+                            response.headers.AddHeader("Content-Type", "text/html");
+                        } else if (
+                            (path.length() >= 3)
+                            && (path.substr(path.length() - 3) == ".js")
+                        ) {
+                            response.headers.AddHeader("Content-Type", "application/javascript");
+                        } else if (
+                            (path.length() >= 4)
+                            && (path.substr(path.length() - 4) == ".css")
+                        ) {
+                            response.headers.AddHeader("Content-Type", "text/css");
+                        } else if (
+                            (path.length() >= 4)
+                            && (path.substr(path.length() - 4) == ".ico")
+                        ) {
+                            response.headers.AddHeader("Content-Type", "image/x-icon");
+                        } else {
+                            response.headers.AddHeader("Content-Type", "text/plain");
+                        }
                         response.headers.AddHeader("ETag", etag);
                     } else {
                         response.statusCode = 500;
