@@ -40,4 +40,5 @@ if(UNIX)
 endif(UNIX)
 
 add_subdirectory(ChatRoomPlugin)
+add_subdirectory(EchoPlugin)
 add_subdirectory(StaticContentPlugin)
