@@ -167,6 +167,11 @@ namespace {
         bool broken = false;
 
         /**
+         * This is the address to report for the peer of the connection.
+         */
+        std::string peerAddress;
+
+        /**
          * This is the identifier to report for the peer of the connection.
          */
         std::string peerId;
@@ -181,8 +186,12 @@ namespace {
         /**
          * This is the constructor for the structure.
          */
-        explicit MockConnection(const std::string& peerId)
-            : peerId(peerId)
+        explicit MockConnection(
+            const std::string& peerAddress,
+            const std::string& peerId
+        )
+            : peerAddress(peerAddress)
+            , peerId(peerId)
         {
         }
 
@@ -192,6 +201,10 @@ namespace {
         }
 
         // Http::Connection
+
+        virtual std::string GetPeerAddress() override {
+            return peerAddress;
+        }
 
         virtual std::string GetPeerId() override {
             return peerId;
@@ -304,11 +317,19 @@ struct ChatRoomPluginTests
             SystemAbstractions::sprintf(
                 "mock-client-%zu",
                 i
+            ),
+            SystemAbstractions::sprintf(
+                "mock-client-%zu:7777",
+                i
             )
         );
         serverConnection[i] = std::make_shared< MockConnection >(
             SystemAbstractions::sprintf(
                 "mock-server-%zu",
+                i
+            ),
+            SystemAbstractions::sprintf(
+                "mock-server-%zu:5555",
                 i
             )
         );
@@ -752,8 +773,8 @@ TEST_F(ChatRoomPluginTests, Leave) {
     }
     ASSERT_EQ(
         (std::vector< std::string >{
-            "Session #2[1]: Connection to mock-server-1 closed ()",
-            "Session #2[1]: Connection to mock-server-1 closed by peer",
+            "Session #2[1]: Connection to mock-server-1:5555 closed ()",
+            "Session #2[1]: Connection to mock-server-1:5555 closed by peer",
         }),
         diagnosticMessages
     );
@@ -856,7 +877,7 @@ TEST_F(ChatRoomPluginTests, SetNickNameInTrailer) {
 }
 
 TEST_F(ChatRoomPluginTests, ConnectionNotUpgraded) {
-    const auto connection = std::make_shared< MockConnection >("mock-client");
+    const auto connection = std::make_shared< MockConnection >("mock-client", "mock-client:5555");
     std::string responseText;
     connection->sendDataDelegate = [this, &responseText](
         const std::vector< uint8_t >& data
