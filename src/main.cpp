@@ -358,6 +358,7 @@ int main(int argc, char* argv[]) {
         return EXIT_FAILURE;
     }
     Http::Server server;
+    (void)setbuf(stdout, NULL);
     const auto diagnosticsPublisher = SystemAbstractions::DiagnosticsStreamReporter(stdout, stderr);
     const auto diagnosticsSubscription = server.SubscribeToDiagnostics(diagnosticsPublisher);
     const auto configuration = ReadConfiguration(environment);
