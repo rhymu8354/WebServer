@@ -28,5 +28,6 @@ TimeKeeper::TimeKeeper()
 }
 
 double TimeKeeper::GetCurrentTime() {
-    return impl_->time.GetTime();
+    static double startTime = impl_->time.GetTime();
+    return impl_->time.GetTime() - startTime;
 }
