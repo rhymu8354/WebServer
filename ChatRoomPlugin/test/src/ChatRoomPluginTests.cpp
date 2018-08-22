@@ -651,7 +651,8 @@ TEST_F(ChatRoomPluginTests, TellFromNonLurker) {
         messagesReceived[0]
     );
 
-    // Alice says something.
+    // Alice says something at 2.5 seconds.
+    server.timeKeeper->currentTime = 2.5;
     messagesReceived[0].clear();
     messagesReceived[1].clear();
     message = Json::JsonObject({
@@ -663,6 +664,7 @@ TEST_F(ChatRoomPluginTests, TellFromNonLurker) {
         {"Type", "Tell"},
         {"Sender", "Alice"},
         {"Tell", "142"},
+        {"Time", "00:00:02.500"},
     });
     EXPECT_EQ(
         (std::vector< Json::Json >{
@@ -968,6 +970,7 @@ TEST_F(ChatRoomPluginTests, ChangeNickNameSingleConnectionNonLurkerToNonLurkerNo
                 {"Type", "Tell"},
                 {"Sender", "PePe"},
                 {"Tell", "142"},
+                {"Time", "00:00:00.000"},
             }),
         }),
         messagesReceived[1]
@@ -1154,6 +1157,7 @@ TEST_F(ChatRoomPluginTests, TwoTellsTooQuickly) {
         {"Type", "Tell"},
         {"Sender", "Bob"},
         {"Tell", "142"},
+        {"Time", "00:00:00.000"},
     });
     EXPECT_EQ(
         (std::vector< Json::Json >{
@@ -1195,6 +1199,12 @@ TEST_F(ChatRoomPluginTests, TwoTellsTooQuickly) {
     messagesReceived[0].clear();
     messagesReceived[1].clear();
     ws[0].SendText(message.ToEncoding());
+    expectedResponse = Json::JsonObject({
+        {"Type", "Tell"},
+        {"Sender", "Bob"},
+        {"Tell", "142"},
+        {"Time", "00:00:01.000"},
+    });
     EXPECT_EQ(
         (std::vector< Json::Json >{
             expectedResponse,
@@ -1273,11 +1283,13 @@ TEST_F(ChatRoomPluginTests, FirstAnswerScores) {
     ws[2].SendText(message.ToEncoding());
 
     // Bob answers the current question.
+    server.timeKeeper->currentTime = 1.5;
     messagesReceived[0].clear();
     messagesReceived[1].clear();
     ws[0].SendText(message.ToEncoding());
 
     // Alice answers the current question, but a little too late.
+    server.timeKeeper->currentTime = 1.6;
     ws[1].SendText(message.ToEncoding());
 
     // Expect both tells, but only Bob awarded a point.
@@ -1287,6 +1299,7 @@ TEST_F(ChatRoomPluginTests, FirstAnswerScores) {
                 {"Type", "Tell"},
                 {"Sender", "Bob"},
                 {"Tell", "42"},
+                {"Time", "00:00:01.500"},
             }),
             Json::JsonObject({
                 {"Type", "Award"},
@@ -1298,6 +1311,7 @@ TEST_F(ChatRoomPluginTests, FirstAnswerScores) {
                 {"Type", "Tell"},
                 {"Sender", "Alice"},
                 {"Tell", "42"},
+                {"Time", "00:00:01.600"},
             }),
         }),
         messagesReceived[0]
@@ -1356,6 +1370,7 @@ TEST_F(ChatRoomPluginTests, IncorrectAnswersPenalizedBeforeCorrectAnswer) {
     ws[0].SendText(message.ToEncoding());
 
     // Alice answers the current question correctly.
+    server.timeKeeper->currentTime = 1.0;
     message = Json::JsonObject({
         {"Type", "Tell"},
         {"Tell", "42"},
@@ -1363,7 +1378,7 @@ TEST_F(ChatRoomPluginTests, IncorrectAnswersPenalizedBeforeCorrectAnswer) {
     ws[1].SendText(message.ToEncoding());
 
     // Bob answers the last question correctly, but a little too late.
-    server.timeKeeper->currentTime += 1.0;
+    server.timeKeeper->currentTime = 1.1;
     message = Json::JsonObject({
         {"Type", "Tell"},
         {"Tell", "42"},
@@ -1377,6 +1392,7 @@ TEST_F(ChatRoomPluginTests, IncorrectAnswersPenalizedBeforeCorrectAnswer) {
                 {"Type", "Tell"},
                 {"Sender", "Bob"},
                 {"Tell", "41"},
+                {"Time", "00:00:00.000"},
             }),
             Json::JsonObject({
                 {"Type", "Penalty"},
@@ -1388,6 +1404,7 @@ TEST_F(ChatRoomPluginTests, IncorrectAnswersPenalizedBeforeCorrectAnswer) {
                 {"Type", "Tell"},
                 {"Sender", "Alice"},
                 {"Tell", "42"},
+                {"Time", "00:00:01.000"},
             }),
             Json::JsonObject({
                 {"Type", "Award"},
@@ -1399,6 +1416,7 @@ TEST_F(ChatRoomPluginTests, IncorrectAnswersPenalizedBeforeCorrectAnswer) {
                 {"Type", "Tell"},
                 {"Sender", "Bob"},
                 {"Tell", "42"},
+                {"Time", "00:00:01.100"},
             }),
         }),
         messagesReceived[0]
@@ -1441,8 +1459,9 @@ TEST_F(ChatRoomPluginTests, MathQuestionPostedWhenNotOnCooldown) {
 
     // Advance the time so that the next math question will
     // have been posted.
-    server.timeKeeper->currentTime += 11.0;
+    server.timeKeeper->currentTime = 10.0;
     AwaitNextQuestion();
+    server.timeKeeper->currentTime = 11.0;
 
     // Bob answers the current question.
     messagesReceived[0].clear();
@@ -1460,11 +1479,13 @@ TEST_F(ChatRoomPluginTests, MathQuestionPostedWhenNotOnCooldown) {
                 {"Type", "Tell"},
                 {"Sender", "MathBot2000"},
                 {"Tell", question},
+                {"Time", "00:00:10.000"},
             }),
             Json::JsonObject({
                 {"Type", "Tell"},
                 {"Sender", "Bob"},
                 {"Tell", answer},
+                {"Time", "00:00:11.000"},
             }),
             Json::JsonObject({
                 {"Type", "Award"},
