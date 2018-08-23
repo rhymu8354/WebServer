@@ -448,6 +448,7 @@ TEST_F(ChatRoomPluginTests, GetAvailableNickNames) {
     const auto expectedResponse = Json::JsonObject({
         {"Type", "AvailableNickNames"},
         {"AvailableNickNames", availableNicknames},
+        {"Time", 0.0},
     });
     ASSERT_EQ(
         (std::vector< Json::Json >{
@@ -471,14 +472,17 @@ TEST_F(ChatRoomPluginTests, SetNickName) {
     auto expectedResponse = Json::JsonObject({
         {"Type", "SetNickNameResult"},
         {"Success", false},
+        {"Time", 0.0},
     });
     auto expectedResponse2 = Json::JsonObject({
         {"Type", "Join"},
         {"NickName", "Bob"},
+        {"Time", 0.0},
     });
     auto expectedResponse3 = Json::JsonObject({
         {"Type", "SetNickNameResult"},
         {"Success", true},
+        {"Time", 0.0},
     });
     ASSERT_EQ(
         (std::vector< Json::Json >{
@@ -502,6 +506,7 @@ TEST_F(ChatRoomPluginTests, SetNickName) {
     expectedResponse = Json::JsonObject({
         {"Type", "NickNames"},
         {"NickNames", Json::JsonArray({"Bob"})},
+        {"Time", 0.0},
     });
     ASSERT_EQ(
         (std::vector< Json::Json >{
@@ -522,10 +527,12 @@ TEST_F(ChatRoomPluginTests, SetNickNameTwice) {
     auto expectedResponse = Json::JsonObject({
         {"Type", "Join"},
         {"NickName", "Bob"},
+        {"Time", 0.0},
     });
     auto expectedResponse2 = Json::JsonObject({
         {"Type", "SetNickNameResult"},
         {"Success", true},
+        {"Time", 0.0},
     });
     ASSERT_EQ(
         (std::vector< Json::Json >{
@@ -547,6 +554,7 @@ TEST_F(ChatRoomPluginTests, SetNickNameTwice) {
     expectedResponse = Json::JsonObject({
         {"Type", "SetNickNameResult"},
         {"Success", false},
+        {"Time", 0.0},
     });
     ASSERT_EQ(
         (std::vector< Json::Json >{
@@ -566,10 +574,12 @@ TEST_F(ChatRoomPluginTests, RoomClearedAfterUnload) {
     auto expectedResponse = Json::JsonObject({
         {"Type", "Join"},
         {"NickName", "Bob"},
+        {"Time", 0.0},
     });
     auto expectedResponse2 = Json::JsonObject({
         {"Type", "SetNickNameResult"},
         {"Success", true},
+        {"Time", 0.0},
     });
     ASSERT_EQ(
         (std::vector< Json::Json >{
@@ -592,6 +602,7 @@ TEST_F(ChatRoomPluginTests, RoomClearedAfterUnload) {
     expectedResponse = Json::JsonObject({
         {"Type", "NickNames"},
         {"NickNames", Json::JsonArray({})},
+        {"Time", 0.0},
     });
     ASSERT_EQ(
         (std::vector< Json::Json >{
@@ -609,6 +620,7 @@ TEST_F(ChatRoomPluginTests, RoomClearedAfterUnload) {
     expectedResponse = Json::JsonObject({
         {"Type", "AvailableNickNames"},
         {"AvailableNickNames", availableNicknames},
+        {"Time", 0.0},
     });
     ASSERT_EQ(
         (std::vector< Json::Json >{
@@ -643,6 +655,7 @@ TEST_F(ChatRoomPluginTests, TellFromNonLurker) {
     auto expectedResponse = Json::JsonObject({
         {"Type", "NickNames"},
         {"NickNames", Json::JsonArray({"Alice", "Bob"})},
+        {"Time", 0.0},
     });
     ASSERT_EQ(
         (std::vector< Json::Json >{
@@ -720,6 +733,7 @@ TEST_F(ChatRoomPluginTests, Join) {
     auto expectedResponse = Json::JsonObject({
         {"Type", "Join"},
         {"NickName", "Alice"},
+        {"Time", 0.0},
     });
     EXPECT_EQ(
         (std::vector< Json::Json >{
@@ -731,6 +745,7 @@ TEST_F(ChatRoomPluginTests, Join) {
     auto expectedResponse2 = Json::JsonObject({
         {"Type", "SetNickNameResult"},
         {"Success", true},
+        {"Time", 0.0},
     });
     ASSERT_EQ(
         (std::vector< Json::Json >{
@@ -791,10 +806,12 @@ TEST_F(ChatRoomPluginTests, Leave) {
             Json::JsonObject({
                 {"Type", "Leave"},
                 {"NickName", "Alice"},
+                {"Time", 0.0},
             }),
             Json::JsonObject({
                 {"Type", "NickNames"},
                 {"NickNames", Json::JsonArray({"Bob"})},
+                {"Time", 0.0},
             }),
         }),
         messagesReceived[0]
@@ -847,16 +864,19 @@ TEST_F(ChatRoomPluginTests, SetNickNameInTrailer) {
     auto expectedResponse = Json::JsonObject({
         {"Type", "Join"},
         {"NickName", "Bob"},
+        {"Time", 0.0},
     });
     ASSERT_EQ(
         (std::vector< Json::Json >{
             Json::JsonObject({
                 {"Type", "Join"},
                 {"NickName", "Bob"},
+                {"Time", 0.0},
             }),
             Json::JsonObject({
                 {"Type", "SetNickNameResult"},
                 {"Success", true},
+                {"Time", 0.0},
             }),
         }),
         messagesReceived[0]
@@ -871,6 +891,7 @@ TEST_F(ChatRoomPluginTests, SetNickNameInTrailer) {
             Json::JsonObject({
                 {"Type", "NickNames"},
                 {"NickNames", Json::JsonArray({"Bob"})},
+                {"Time", 0.0},
             }),
         }),
         messagesReceived[0]
@@ -919,14 +940,17 @@ TEST_F(ChatRoomPluginTests, ChangeNickNameSingleConnectionNonLurkerToNonLurkerNo
     auto expectedResponse1 = Json::JsonObject({
         {"Type", "Leave"},
         {"NickName", "Bob"},
+        {"Time", 0.0},
     });
     auto expectedResponse2 = Json::JsonObject({
         {"Type", "Join"},
         {"NickName", "PePe"},
+        {"Time", 0.0},
     });
     auto expectedResponse3 = Json::JsonObject({
         {"Type", "SetNickNameResult"},
         {"Success", true},
+        {"Time", 0.0},
     });
     EXPECT_EQ(
         (std::vector< Json::Json >{
@@ -993,6 +1017,7 @@ TEST_F(ChatRoomPluginTests, ChangeNickNameSingleConnectionNonLurkerToNonLurkerNo
             Json::JsonObject({
                 {"Type", "AvailableNickNames"},
                 {"AvailableNickNames", nicknames},
+                {"Time", 0.0},
             }),
         }),
         messagesReceived[1]
@@ -1020,10 +1045,12 @@ TEST_F(ChatRoomPluginTests, ChangeNickNameOneConnectionNonLurkerToLurker) {
     auto expectedResponse = Json::JsonObject({
         {"Type", "SetNickNameResult"},
         {"Success", true},
+        {"Time", 0.0},
     });
     auto expectedResponse2 = Json::JsonObject({
         {"Type", "Leave"},
         {"NickName", "Bob"},
+        {"Time", 0.0},
     });
     EXPECT_EQ(
         (std::vector< Json::Json >{
@@ -1082,6 +1109,7 @@ TEST_F(ChatRoomPluginTests, ChangeNickNameOneConnectionNonLurkerToLurker) {
             Json::JsonObject({
                 {"Type", "AvailableNickNames"},
                 {"AvailableNickNames", availableNicknames},
+                {"Time", 0.0},
             }),
         }),
         messagesReceived[1]
@@ -1100,6 +1128,7 @@ TEST_F(ChatRoomPluginTests, ChangeNickNameLurkerToLurker) {
             Json::JsonObject({
                 {"Type", "SetNickNameResult"},
                 {"Success", true},
+                {"Time", 0.0},
             }),
         }),
         messagesReceived[0]
@@ -1253,6 +1282,7 @@ TEST_F(ChatRoomPluginTests, GetUsers) {
                         {"Points", 0},
                     }),
                 })},
+                {"Time", 0.0},
             }),
         }),
         messagesReceived[0]
@@ -1339,6 +1369,7 @@ TEST_F(ChatRoomPluginTests, FirstAnswerScores) {
                         {"Points", 0},
                     }),
                 })},
+                {"Time", 1.6},
             }),
         }),
         messagesReceived[0]
@@ -1446,6 +1477,7 @@ TEST_F(ChatRoomPluginTests, IncorrectAnswersPenalizedBeforeCorrectAnswer) {
                         {"Points", 1},
                     }),
                 })},
+                {"Time", 1.1},
             }),
         }),
         messagesReceived[0]
@@ -1462,13 +1494,13 @@ TEST_F(ChatRoomPluginTests, MathQuestionPostedWhenNotOnCooldown) {
 
     // Advance the time so that the next math question will
     // have been posted.
+    messagesReceived[0].clear();
+    messagesReceived[1].clear();
     server.timeKeeper->currentTime = 10.0;
     AwaitNextQuestion();
     server.timeKeeper->currentTime = 11.0;
 
     // Bob answers the current question.
-    messagesReceived[0].clear();
-    messagesReceived[1].clear();
     const auto question = GetNextQuestion();
     const auto answer = GetNextAnswer();
     message = Json::JsonObject({

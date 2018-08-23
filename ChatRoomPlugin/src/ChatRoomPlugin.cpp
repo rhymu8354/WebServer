@@ -261,6 +261,23 @@ namespace {
         }
 
         /**
+         * This function sends the given message to a specific user.
+         *
+         * @param[in] user
+         *     This is the user to whom to send the message.
+         *
+         * @param[in] message
+         *     This is the message to send to the user.
+         */
+        void SendToUser(
+            const User& user,
+            Json::Json message
+        ) {
+            message.Set("Time", server->GetTimeKeeper()->GetCurrentTime());
+            user.ws->SendText(message.ToEncoding());
+        }
+
+        /**
          * This function sends the given text message to the given
          * set of users.
          *
@@ -272,10 +289,10 @@ namespace {
          */
         void SendToUsers(
             const std::map< unsigned int, User >& users,
-            const std::string& message
+            const Json::Json& message
         ) {
             for (auto& user: users) {
-                user.second.ws->SendText(message);
+                SendToUser(user.second, message);
             }
         }
 
@@ -286,7 +303,7 @@ namespace {
          *     This is the message to send to all users.
          */
         void SendToAll(const Json::Json& message) {
-            SendToUsers(users, message.ToEncoding());
+            SendToUsers(users, message);
         }
 
         /**
@@ -308,12 +325,10 @@ namespace {
                 {"Type", "Tell"},
                 {"Sender", sender},
                 {"Tell", tell},
-                {"Time", server->GetTimeKeeper()->GetCurrentTime()},
             });
-            const auto postEncoding = post.ToEncoding();
             auto usersCopy = users;
             lock.unlock();
-            SendToUsers(usersCopy, postEncoding);
+            SendToUsers(usersCopy, post);
             lock.lock();
         }
 
@@ -348,10 +363,9 @@ namespace {
                                     {"Type", "Leave"},
                                     {"NickName", nickname},
                                 });
-                                const auto responseEncoding = response.ToEncoding();
                                 auto usersCopy = users;
                                 lock.unlock();
-                                SendToUsers(usersCopy, responseEncoding);
+                                SendToUsers(usersCopy, response);
                                 lock.lock();
                             }
                         }
@@ -384,10 +398,10 @@ namespace {
                     } while (answer == lastAnswer);
                     answeredCorrectly = false;
                     CooldownNextQuestion();
-                    answerChangedCondition.notify_all();
                     lock.unlock();
                     SendTell(question, "MathBot2000");
                     lock.lock();
+                    answerChangedCondition.notify_all();
                 }
             }
         }
@@ -467,7 +481,10 @@ namespace {
                     );
                 }
             }
-            userEntry->second.ws->SendText(setNickNameResult.ToEncoding());
+            SendToUser(
+                userEntry->second,
+                setNickNameResult
+            );
         }
 
         /**
@@ -498,7 +515,10 @@ namespace {
                 nicknames.Add(nickname);
             }
             response.Set("NickNames", nicknames);
-            userEntry->second.ws->SendText(response.ToEncoding());
+            SendToUser(
+                userEntry->second,
+                response
+            );
         }
 
         /**
@@ -544,7 +564,6 @@ namespace {
                         {"Subject", userEntry->second.nickname},
                         {"Award", 1},
                         {"Points", userEntry->second.points},
-                        {"Time", server->GetTimeKeeper()->GetCurrentTime()},
                     });
                     SendToAll(response);
                 } else {
@@ -554,7 +573,6 @@ namespace {
                         {"Subject", userEntry->second.nickname},
                         {"Penalty", 1},
                         {"Points", userEntry->second.points},
-                        {"Time", server->GetTimeKeeper()->GetCurrentTime()},
                     });
                     SendToAll(response);
                 }
@@ -615,7 +633,10 @@ namespace {
                 }
             }
             response.Set("Users", usersJson);
-            userEntry->second.ws->SendText(response.ToEncoding());
+            SendToUser(
+                userEntry->second,
+                response
+            );
         }
 
         /**
