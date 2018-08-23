@@ -122,7 +122,7 @@ namespace {
         /**
          * This is used to synchronize access to the chat room.
          */
-        std::mutex mutex;
+        std::recursive_mutex mutex;
 
         /**
          * This points back to the web server hosting the chat room.
@@ -151,7 +151,7 @@ namespace {
          * This is used to notify the worker thread about
          * any change that should cause it to wake up.
          */
-        std::condition_variable workerWakeCondition;
+        std::condition_variable_any workerWakeCondition;
 
         /**
          * This is used to perform housekeeping in the background.
@@ -242,7 +242,7 @@ namespace {
          * This is used to issue notifications when the current
          * math question has changed.
          */
-        std::condition_variable answerChangedCondition;
+        std::condition_variable_any answerChangedCondition;
 
         // Methods
 
@@ -288,25 +288,60 @@ namespace {
         }
 
         /**
-         * This function sends the given response to all users.
+         * This function sends the given text message to the given
+         * set of users.
          *
-         * @param[in] response
-         *     This is the response to send to all users.
+         * @param[in] users
+         *     These are the users to whom to send the message.
+         *
+         * @param[in] message
+         *     This is the message to send to all users.
          */
-        void SendToAll(const std::string& response) {
+        void SendToUsers(
+            const std::map< unsigned int, User >& users,
+            const std::string& message
+        ) {
             for (auto& user: users) {
-                user.second.ws->SendText(response);
+                user.second.ws->SendText(message);
             }
         }
 
         /**
-         * This function sends the given response to all users.
+         * This function sends the given message to all users.
          *
-         * @param[in] response
-         *     This is the response to send to all users.
+         * @param[in] message
+         *     This is the message to send to all users.
          */
-        void SendToAll(const Json::Json& response) {
-            SendToAll(response.ToEncoding());
+        void SendToAll(const Json::Json& message) {
+            SendToUsers(users, message.ToEncoding());
+        }
+
+        /**
+         * This function sends the given tell as a text message
+         * to all users.
+         *
+         * @param[in] tell
+         *     This is the tell to send as a text mesage to all users.
+         *
+         * @param[in] sender
+         *     This is the sender of the tell.
+         */
+        void SendTell(
+            const std::string& tell,
+            const std::string& sender
+        ) {
+            std::unique_lock< decltype(mutex) > lock(mutex);
+            const auto post = Json::JsonObject({
+                {"Type", "Tell"},
+                {"Sender", sender},
+                {"Tell", tell},
+                {"Time", FormatTimestamp(server->GetTimeKeeper()->GetCurrentTime())},
+            });
+            const auto postEncoding = post.ToEncoding();
+            auto usersCopy = users;
+            lock.unlock();
+            SendToUsers(usersCopy, postEncoding);
+            lock.lock();
         }
 
         /**
@@ -343,7 +378,7 @@ namespace {
                                 const auto responseEncoding = response.ToEncoding();
                                 auto usersCopy = users;
                                 lock.unlock();
-                                SendToAll(responseEncoding);
+                                SendToUsers(usersCopy, responseEncoding);
                                 lock.lock();
                             }
                         }
@@ -376,17 +411,9 @@ namespace {
                     } while (answer == lastAnswer);
                     answeredCorrectly = false;
                     CooldownNextQuestion();
-                    const auto post = Json::JsonObject({
-                        {"Type", "Tell"},
-                        {"Sender", "MathBot2000"},
-                        {"Tell", question},
-                        {"Time", FormatTimestamp(server->GetTimeKeeper()->GetCurrentTime())},
-                    });
-                    const auto postEncoding = post.ToEncoding();
-                    auto usersCopy = users;
                     answerChangedCondition.notify_all();
                     lock.unlock();
-                    SendToAll(postEncoding);
+                    SendTell(question, "MathBot2000");
                     lock.lock();
                 }
             }
@@ -534,13 +561,7 @@ namespace {
                 return;
             }
             userEntry->second.lastTell = now;
-            const auto response = Json::JsonObject({
-                {"Type", "Tell"},
-                {"Tell", tell},
-                {"Sender", userEntry->second.nickname},
-                {"Time", FormatTimestamp(server->GetTimeKeeper()->GetCurrentTime())},
-            });
-            SendToAll(response);
+            SendTell(tell, userEntry->second.nickname);
             if (!answeredCorrectly) {
                 if (tell == answer) {
                     answeredCorrectly = true;
