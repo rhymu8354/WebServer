@@ -9,6 +9,7 @@
 #include "TimeKeeper.hpp"
 
 #include <SystemAbstractions/Time.hpp>
+#include <time.h>
 
 /**
  * This contains the private properties of a TimeKeeper class instance.
@@ -28,6 +29,8 @@ TimeKeeper::TimeKeeper()
 }
 
 double TimeKeeper::GetCurrentTime() {
-    static double startTime = impl_->time.GetTime();
-    return impl_->time.GetTime() - startTime;
+    static const auto startTimeHighRes = impl_->time.GetTime();
+    static const auto startTimeReal = time(NULL);
+    static const auto secondsOffset = (double)(startTimeReal % 86400);
+    return impl_->time.GetTime() - startTimeHighRes + secondsOffset;
 }
