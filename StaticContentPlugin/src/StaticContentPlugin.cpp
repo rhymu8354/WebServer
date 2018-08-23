@@ -100,7 +100,7 @@ namespace {
             );
             return false;
         }
-        spaceMapping.root = configuration["root"];
+        spaceMapping.root = (std::string)configuration["root"];
         if (!SystemAbstractions::File::IsAbsolutePath(spaceMapping.root)) {
             spaceMapping.root = SystemAbstractions::File::GetExeParentDirectory() + "/" + spaceMapping.root;
         }
