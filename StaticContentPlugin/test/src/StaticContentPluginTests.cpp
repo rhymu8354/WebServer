@@ -8,6 +8,7 @@
  */
 
 #include <gtest/gtest.h>
+#include <map>
 #include <Sha1/Sha1.hpp>
 #include <stdio.h>
 #include <SystemAbstractions/File.hpp>
@@ -64,6 +65,13 @@ namespace {
         ResourceDelegate registeredResourceDelegate;
 
         /**
+         * These are the delegates that the unit under test has registered
+         * to be called to handle resource requests.  They are keyed
+         * by the first element of the registered path.
+         */
+        std::map< std::string, ResourceDelegate > registeredResourceDelegates;
+
+        /**
          * This is the time keeper used in the tests to simulate
          * the progress of time.
          */
@@ -96,6 +104,9 @@ namespace {
         ) override {
             registeredResourceSubspacePath = resourceSubspacePath;
             registeredResourceDelegate = resourceDelegate;
+            if (resourceSubspacePath.size() > 0) {
+                registeredResourceDelegates[resourceSubspacePath[0]] = resourceDelegate;
+            }
             return []{};
         }
 
@@ -290,4 +301,64 @@ TEST_F(StaticContentPluginTests, EntityTagComputedFromSha1) {
     // Verify entity tag was computed using SHA-1.
     const auto expectedEtag = Sha1::Sha1String(testFileContent);
     EXPECT_EQ(expectedEtag, actualEtag);
+}
+
+TEST_F(StaticContentPluginTests, ServeMultipleResourceSpaces) {
+    const std::string fooTestAreaPath = testAreaPath + "/foo";
+    const std::string barTestAreaPath = testAreaPath + "/bar";
+    ASSERT_TRUE(SystemAbstractions::File::CreateDirectory(fooTestAreaPath));
+    ASSERT_TRUE(SystemAbstractions::File::CreateDirectory(barTestAreaPath));
+    SystemAbstractions::File testFile1(testAreaPath + "/foo/hello.txt");
+    SystemAbstractions::File testFile2(testAreaPath + "/bar/hello.txt");
+    (void)testFile1.Create();
+    (void)testFile2.Create();
+    (void)testFile1.Write("Hello!", 6);
+    (void)testFile2.Write("World!", 6);
+    testFile1.Close();
+    testFile2.Close();
+    MockServer server;
+    std::function< void() > unloadDelegate;
+    Json::Json config(Json::Json::Type::Object);
+    config.Set(
+        "spaces",
+        Json::JsonArray(
+            {
+                Json::JsonObject({
+                    {"space", "/foo"},
+                    {"root", fooTestAreaPath},
+                }),
+                Json::JsonObject({
+                    {"space", "/bar"},
+                    {"root", barTestAreaPath},
+                }),
+            }
+        )
+    );
+    LoadPlugin(
+        &server,
+        config,
+        [](
+            std::string senderName,
+            size_t level,
+            std::string message
+        ){
+            printf(
+                "[%s:%zu] %s\n",
+                senderName.c_str(),
+                level,
+                message.c_str()
+            );
+        },
+        unloadDelegate
+    );
+    ASSERT_FALSE(server.registeredResourceDelegates.find("foo") == server.registeredResourceDelegates.end());
+    ASSERT_FALSE(server.registeredResourceDelegates.find("bar") == server.registeredResourceDelegates.end());
+    Http::Request request;
+    request.target.SetPath({"hello.txt"});
+    auto response = server.registeredResourceDelegates["foo"](request, nullptr, "");
+    EXPECT_EQ("Hello!", response.body);
+    request = Http::Request();
+    request.target.SetPath({"hello.txt"});
+    response = server.registeredResourceDelegates["bar"](request, nullptr, "");
+    EXPECT_EQ("World!", response.body);
 }
