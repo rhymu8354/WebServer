@@ -1306,6 +1306,7 @@ TEST_F(ChatRoomPluginTests, FirstAnswerScores) {
                 {"Subject", "Bob"},
                 {"Award", 1},
                 {"Points", 6},
+                {"Time", 1.5},
             }),
             Json::JsonObject({
                 {"Type", "Tell"},
@@ -1399,6 +1400,7 @@ TEST_F(ChatRoomPluginTests, IncorrectAnswersPenalizedBeforeCorrectAnswer) {
                 {"Subject", "Bob"},
                 {"Penalty", 1},
                 {"Points", 4},
+                {"Time", 0.0},
             }),
             Json::JsonObject({
                 {"Type", "Tell"},
@@ -1411,6 +1413,7 @@ TEST_F(ChatRoomPluginTests, IncorrectAnswersPenalizedBeforeCorrectAnswer) {
                 {"Subject", "Alice"},
                 {"Award", 1},
                 {"Points", 1},
+                {"Time", 1.0},
             }),
             Json::JsonObject({
                 {"Type", "Tell"},
@@ -1492,6 +1495,7 @@ TEST_F(ChatRoomPluginTests, MathQuestionPostedWhenNotOnCooldown) {
                 {"Subject", "Bob"},
                 {"Award", 1},
                 {"Points", 6},
+                {"Time", 11.0},
             }),
         }),
         messagesReceived[0]

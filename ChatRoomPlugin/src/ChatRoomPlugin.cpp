@@ -544,6 +544,7 @@ namespace {
                         {"Subject", userEntry->second.nickname},
                         {"Award", 1},
                         {"Points", userEntry->second.points},
+                        {"Time", server->GetTimeKeeper()->GetCurrentTime()},
                     });
                     SendToAll(response);
                 } else {
@@ -553,6 +554,7 @@ namespace {
                         {"Subject", userEntry->second.nickname},
                         {"Penalty", 1},
                         {"Points", userEntry->second.points},
+                        {"Time", server->GetTimeKeeper()->GetCurrentTime()},
                     });
                     SendToAll(response);
                 }
