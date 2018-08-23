@@ -42,33 +42,6 @@ namespace {
     constexpr unsigned int WORKER_POLLING_PERIOD_MILLISECONDS = 50;
 
     /**
-     * This function renders the given timestamp into the format to be
-     * displayed to users.
-     *
-     * @param[in] timestamp
-     *     This is the timestamp to render.
-     *
-     * @return
-     *     The given timestamp rendered into the format to be displayed
-     *     to users is returned.
-     */
-    std::string FormatTimestamp(double timestamp) {
-        const auto hours = floor(timestamp / 3600.0);
-        timestamp -= (hours * 3600.0);
-        const auto minutes = floor(timestamp / 60.0);
-        timestamp -= (minutes * 60.0);
-        const auto seconds = floor(timestamp);
-        const auto milliseconds = floor((timestamp - seconds) * 1000);
-        return SystemAbstractions::sprintf(
-            "%02d:%02d:%02d.%03d",
-            (int)hours,
-            (int)minutes,
-            (int)seconds,
-            (int)milliseconds
-        );
-    }
-
-    /**
      * This represents one user in the chat room.
      */
     struct User {
@@ -335,7 +308,7 @@ namespace {
                 {"Type", "Tell"},
                 {"Sender", sender},
                 {"Tell", tell},
-                {"Time", FormatTimestamp(server->GetTimeKeeper()->GetCurrentTime())},
+                {"Time", server->GetTimeKeeper()->GetCurrentTime()},
             });
             const auto postEncoding = post.ToEncoding();
             auto usersCopy = users;

@@ -664,7 +664,7 @@ TEST_F(ChatRoomPluginTests, TellFromNonLurker) {
         {"Type", "Tell"},
         {"Sender", "Alice"},
         {"Tell", "142"},
-        {"Time", "00:00:02.500"},
+        {"Time", 2.5},
     });
     EXPECT_EQ(
         (std::vector< Json::Json >{
@@ -970,7 +970,7 @@ TEST_F(ChatRoomPluginTests, ChangeNickNameSingleConnectionNonLurkerToNonLurkerNo
                 {"Type", "Tell"},
                 {"Sender", "PePe"},
                 {"Tell", "142"},
-                {"Time", "00:00:00.000"},
+                {"Time", 0.0},
             }),
         }),
         messagesReceived[1]
@@ -1157,7 +1157,7 @@ TEST_F(ChatRoomPluginTests, TwoTellsTooQuickly) {
         {"Type", "Tell"},
         {"Sender", "Bob"},
         {"Tell", "142"},
-        {"Time", "00:00:00.000"},
+        {"Time", 0.0},
     });
     EXPECT_EQ(
         (std::vector< Json::Json >{
@@ -1203,7 +1203,7 @@ TEST_F(ChatRoomPluginTests, TwoTellsTooQuickly) {
         {"Type", "Tell"},
         {"Sender", "Bob"},
         {"Tell", "142"},
-        {"Time", "00:00:01.000"},
+        {"Time", 1.0},
     });
     EXPECT_EQ(
         (std::vector< Json::Json >{
@@ -1299,7 +1299,7 @@ TEST_F(ChatRoomPluginTests, FirstAnswerScores) {
                 {"Type", "Tell"},
                 {"Sender", "Bob"},
                 {"Tell", "42"},
-                {"Time", "00:00:01.500"},
+                {"Time", 1.5},
             }),
             Json::JsonObject({
                 {"Type", "Award"},
@@ -1311,7 +1311,7 @@ TEST_F(ChatRoomPluginTests, FirstAnswerScores) {
                 {"Type", "Tell"},
                 {"Sender", "Alice"},
                 {"Tell", "42"},
-                {"Time", "00:00:01.600"},
+                {"Time", 1.6},
             }),
         }),
         messagesReceived[0]
@@ -1392,7 +1392,7 @@ TEST_F(ChatRoomPluginTests, IncorrectAnswersPenalizedBeforeCorrectAnswer) {
                 {"Type", "Tell"},
                 {"Sender", "Bob"},
                 {"Tell", "41"},
-                {"Time", "00:00:00.000"},
+                {"Time", 0.0},
             }),
             Json::JsonObject({
                 {"Type", "Penalty"},
@@ -1404,7 +1404,7 @@ TEST_F(ChatRoomPluginTests, IncorrectAnswersPenalizedBeforeCorrectAnswer) {
                 {"Type", "Tell"},
                 {"Sender", "Alice"},
                 {"Tell", "42"},
-                {"Time", "00:00:01.000"},
+                {"Time", 1.0},
             }),
             Json::JsonObject({
                 {"Type", "Award"},
@@ -1416,7 +1416,7 @@ TEST_F(ChatRoomPluginTests, IncorrectAnswersPenalizedBeforeCorrectAnswer) {
                 {"Type", "Tell"},
                 {"Sender", "Bob"},
                 {"Tell", "42"},
-                {"Time", "00:00:01.100"},
+                {"Time", 1.1},
             }),
         }),
         messagesReceived[0]
@@ -1479,13 +1479,13 @@ TEST_F(ChatRoomPluginTests, MathQuestionPostedWhenNotOnCooldown) {
                 {"Type", "Tell"},
                 {"Sender", "MathBot2000"},
                 {"Tell", question},
-                {"Time", "00:00:10.000"},
+                {"Time", 10.0},
             }),
             Json::JsonObject({
                 {"Type", "Tell"},
                 {"Sender", "Bob"},
                 {"Tell", answer},
-                {"Time", "00:00:11.000"},
+                {"Time", 11.0},
             }),
             Json::JsonObject({
                 {"Type", "Award"},
