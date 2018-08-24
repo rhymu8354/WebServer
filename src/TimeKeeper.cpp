@@ -30,7 +30,6 @@ TimeKeeper::TimeKeeper()
 
 double TimeKeeper::GetCurrentTime() {
     static const auto startTimeHighRes = impl_->time.GetTime();
-    static const auto startTimeReal = time(NULL);
-    static const auto secondsOffset = (double)(startTimeReal % 86400);
-    return impl_->time.GetTime() - startTimeHighRes + secondsOffset;
+    static const auto startTimeReal = (double)time(NULL);
+    return startTimeReal + (impl_->time.GetTime() - startTimeHighRes);
 }
