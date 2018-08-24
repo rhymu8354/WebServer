@@ -12,24 +12,16 @@
 #include "TimeKeeper.hpp"
 
 #include <chrono>
-#include <condition_variable>
-#include <inttypes.h>
 #include <memory>
-#include <regex>
+#include <Http/Server.hpp>
+#include <HttpNetworkTransport/HttpServerNetworkTransport.hpp>
+#include <Json/Value.hpp>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string>
-#include <Http/Server.hpp>
-#include <HttpNetworkTransport/HttpServerNetworkTransport.hpp>
-#include <Json/Value.hpp>
-#include <mutex>
-#include <stdio.h>
 #include <SystemAbstractions/DiagnosticsStreamReporter.hpp>
-#include <SystemAbstractions/DirectoryMonitor.hpp>
-#include <SystemAbstractions/DynamicLibrary.hpp>
 #include <SystemAbstractions/File.hpp>
-#include <SystemAbstractions/StringExtensions.hpp>
 #include <thread>
 #include <vector>
 
