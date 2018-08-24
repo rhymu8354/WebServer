@@ -357,9 +357,9 @@ int main(int argc, char* argv[]) {
     if (!ConfigureAndStartServer(server, configuration, environment, diagnosticsPublisher)) {
         return EXIT_FAILURE;
     }
-    printf("Web server up and running.\n");
+    diagnosticsPublisher("WebServer", 3, "Web server up and running.");
     MonitorServer(server, configuration, environment, diagnosticsPublisher);
     (void)signal(SIGINT, previousInterruptHandler);
-    printf("Exiting...\n");
+    diagnosticsPublisher("WebServer", 3, "Exiting...");
     return EXIT_SUCCESS;
 }
