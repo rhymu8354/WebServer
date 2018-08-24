@@ -11,7 +11,7 @@
 #include <functional>
 #include <Http/Server.hpp>
 #include <inttypes.h>
-#include <Json/Json.hpp>
+#include <Json/Value.hpp>
 #include <sstream>
 #include <SystemAbstractions/StringExtensions.hpp>
 #include <WebServer/PluginEntryPoint.hpp>
@@ -46,7 +46,7 @@
  */
 extern "C" API void LoadPlugin(
     Http::IServer* server,
-    Json::Json configuration,
+    Json::Value configuration,
     SystemAbstractions::DiagnosticsSender::DiagnosticMessageDelegate diagnosticMessageDelegate,
     std::function< void() >& unloadDelegate
 ) {

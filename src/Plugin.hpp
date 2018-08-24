@@ -12,7 +12,7 @@
 #include <functional>
 #include <Http/Server.hpp>
 #include <memory>
-#include <Json/Json.hpp>
+#include <Json/Value.hpp>
 #include <SystemAbstractions/DiagnosticsSender.hpp>
 #include <SystemAbstractions/DynamicLibrary.hpp>
 #include <SystemAbstractions/File.hpp>
@@ -56,7 +56,7 @@ struct Plugin {
      * This is the configuration object to give to the plug-in when
      * it's loaded.
      */
-    Json::Json configuration;
+    Json::Value configuration;
 
     /**
      * This is used to dynamically link with the run-time copy

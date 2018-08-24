@@ -22,7 +22,7 @@
 #include <string>
 #include <Http/Server.hpp>
 #include <HttpNetworkTransport/HttpServerNetworkTransport.hpp>
-#include <Json/Json.hpp>
+#include <Json/Value.hpp>
 #include <mutex>
 #include <stdio.h>
 #include <SystemAbstractions/DiagnosticsStreamReporter.hpp>
@@ -142,10 +142,10 @@ namespace {
      * @return
      *     The server's configuration is returned as a JSON object.
      */
-    Json::Json ReadConfiguration(const Environment& environment) {
+    Json::Value ReadConfiguration(const Environment& environment) {
         // Start with a default configuration, to be used if there are any
         // issues reading the actual configuration file.
-        Json::Json configuration(Json::Json::Type::Object);
+        Json::Value configuration(Json::Value::Type::Object);
 
         // Open the configuration file.
         std::vector< std::string > possibleConfigFilePaths = {
@@ -201,7 +201,7 @@ namespace {
         }
 
         // Decode the configuration file.
-        configuration = Json::Json::FromEncoding(encodedConfig.data());
+        configuration = Json::Value::FromEncoding(encodedConfig.data());
         return configuration;
     }
 
@@ -227,7 +227,7 @@ namespace {
      */
     bool ConfigureAndStartServer(
         Http::Server& server,
-        const Json::Json& configuration,
+        const Json::Value& configuration,
         const Environment& environment,
         SystemAbstractions::DiagnosticsSender::DiagnosticMessageDelegate diagnosticMessageDelegate
     ) {
@@ -266,7 +266,7 @@ namespace {
      */
     void MonitorServer(
         Http::Server& server,
-        const Json::Json& configuration,
+        const Json::Value& configuration,
         const Environment& environment,
         SystemAbstractions::DiagnosticsSender::DiagnosticMessageDelegate diagnosticMessageDelegate
     ) {

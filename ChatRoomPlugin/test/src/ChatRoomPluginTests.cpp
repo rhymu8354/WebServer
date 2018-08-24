@@ -9,7 +9,7 @@
 
 #include <condition_variable>
 #include <gtest/gtest.h>
-#include <Json/Json.hpp>
+#include <Json/Value.hpp>
 #include <mutex>
 #include <stdio.h>
 #include <string>
@@ -26,7 +26,7 @@
 #endif /* _WIN32 / POSIX */
 extern "C" API void LoadPlugin(
     Http::IServer* server,
-    Json::Json configuration,
+    Json::Value configuration,
     SystemAbstractions::DiagnosticsSender::DiagnosticMessageDelegate diagnosticMessageDelegate,
     std::function< void() >& unloadDelegate
 );
@@ -289,7 +289,7 @@ struct ChatRoomPluginTests
     /**
      * This stores all text messages received from the chat room.
      */
-    std::vector< Json::Json > messagesReceived[NUM_MOCK_CLIENTS];
+    std::vector< Json::Value > messagesReceived[NUM_MOCK_CLIENTS];
 
     /**
      * These are the diagnostic messages that have been
@@ -301,7 +301,7 @@ struct ChatRoomPluginTests
      * This is the pool of nicknames from which the chat room allows
      * users to pick.
      */
-    Json::Json availableNicknames;
+    Json::Value availableNicknames;
 
     // Methods
 
@@ -347,7 +347,7 @@ struct ChatRoomPluginTests
         ws[i].SetTextDelegate(
             [this, i](const std::string& data){
                 std::lock_guard< decltype(mutex) > lock(mutex);
-                messagesReceived[i].push_back(Json::Json::FromEncoding(data));
+                messagesReceived[i].push_back(Json::Value::FromEncoding(data));
                 waitCondition.notify_all();
             }
         );
@@ -366,7 +366,7 @@ struct ChatRoomPluginTests
     // ::testing::Test
 
     virtual void SetUp() {
-        availableNicknames = Json::JsonArray({
+        availableNicknames = Json::Array({
             "Alice",
             "Bob",
             "BobaFett",
@@ -376,20 +376,20 @@ struct ChatRoomPluginTests
             "HanSolo",
             "PePe",
         });
-        const auto config = Json::JsonObject({
+        const auto config = Json::Object({
             {"space", CHAT_ROOM_PATH},
             {"nicknames", availableNicknames},
             {"tellTimeout", 1.0},
             {
                 "mathQuiz",
-                Json::JsonObject({
+                Json::Object({
                     {"minCoolDown", 10.0},
                     {"maxCoolDown", 10.0},
                 })
             },
             {
                 "initialPoints",
-                Json::JsonObject({
+                Json::Object({
                     {"Bob", 5},
                 })
             },
@@ -441,17 +441,17 @@ TEST_F(ChatRoomPluginTests, LoadAndConnect) {
 }
 
 TEST_F(ChatRoomPluginTests, GetAvailableNickNames) {
-    const auto message = Json::JsonObject({
+    const auto message = Json::Object({
         {"Type", "GetAvailableNickNames"},
     });
     ws[0].SendText(message.ToEncoding());
-    const auto expectedResponse = Json::JsonObject({
+    const auto expectedResponse = Json::Object({
         {"Type", "AvailableNickNames"},
         {"AvailableNickNames", availableNicknames},
         {"Time", 0.0},
     });
     ASSERT_EQ(
-        (std::vector< Json::Json >{
+        (std::vector< Json::Value >{
             expectedResponse,
         }),
         messagesReceived[0]
@@ -459,33 +459,33 @@ TEST_F(ChatRoomPluginTests, GetAvailableNickNames) {
 }
 
 TEST_F(ChatRoomPluginTests, SetNickName) {
-    auto message = Json::JsonObject({
+    auto message = Json::Object({
         {"Type", "SetNickName"},
         {"NickName", "FeelsBadMan"},
     });
     ws[0].SendText(message.ToEncoding());
-    message = Json::JsonObject({
+    message = Json::Object({
         {"Type", "SetNickName"},
         {"NickName", "Bob"},
     });
     ws[0].SendText(message.ToEncoding());
-    auto expectedResponse = Json::JsonObject({
+    auto expectedResponse = Json::Object({
         {"Type", "SetNickNameResult"},
         {"Success", false},
         {"Time", 0.0},
     });
-    auto expectedResponse2 = Json::JsonObject({
+    auto expectedResponse2 = Json::Object({
         {"Type", "Join"},
         {"NickName", "Bob"},
         {"Time", 0.0},
     });
-    auto expectedResponse3 = Json::JsonObject({
+    auto expectedResponse3 = Json::Object({
         {"Type", "SetNickNameResult"},
         {"Success", true},
         {"Time", 0.0},
     });
     ASSERT_EQ(
-        (std::vector< Json::Json >{
+        (std::vector< Json::Value >{
             expectedResponse,
             expectedResponse2,
             expectedResponse3,
@@ -499,17 +499,17 @@ TEST_F(ChatRoomPluginTests, SetNickName) {
         diagnosticMessages
     );
     messagesReceived[0].clear();
-    message = Json::JsonObject({
+    message = Json::Object({
         {"Type", "GetNickNames"},
     });
     ws[0].SendText(message.ToEncoding());
-    expectedResponse = Json::JsonObject({
+    expectedResponse = Json::Object({
         {"Type", "NickNames"},
-        {"NickNames", Json::JsonArray({"Bob"})},
+        {"NickNames", Json::Array({"Bob"})},
         {"Time", 0.0},
     });
     ASSERT_EQ(
-        (std::vector< Json::Json >{
+        (std::vector< Json::Value >{
             expectedResponse,
         }),
         messagesReceived[0]
@@ -519,23 +519,23 @@ TEST_F(ChatRoomPluginTests, SetNickName) {
 
 TEST_F(ChatRoomPluginTests, SetNickNameTwice) {
     // Set nickname for first client.
-    auto message = Json::JsonObject({
+    auto message = Json::Object({
         {"Type", "SetNickName"},
         {"NickName", "Bob"},
     });
     ws[0].SendText(message.ToEncoding());
-    auto expectedResponse = Json::JsonObject({
+    auto expectedResponse = Json::Object({
         {"Type", "Join"},
         {"NickName", "Bob"},
         {"Time", 0.0},
     });
-    auto expectedResponse2 = Json::JsonObject({
+    auto expectedResponse2 = Json::Object({
         {"Type", "SetNickNameResult"},
         {"Success", true},
         {"Time", 0.0},
     });
     ASSERT_EQ(
-        (std::vector< Json::Json >{
+        (std::vector< Json::Value >{
             expectedResponse,
             expectedResponse2,
         }),
@@ -546,18 +546,18 @@ TEST_F(ChatRoomPluginTests, SetNickNameTwice) {
     // Set nickname for second client, trying
     // to grab the same nickname as the first client.
     messagesReceived[1].clear();
-    message = Json::JsonObject({
+    message = Json::Object({
         {"Type", "SetNickName"},
         {"NickName", "Bob"},
     });
     ws[1].SendText(message.ToEncoding());
-    expectedResponse = Json::JsonObject({
+    expectedResponse = Json::Object({
         {"Type", "SetNickNameResult"},
         {"Success", false},
         {"Time", 0.0},
     });
     ASSERT_EQ(
-        (std::vector< Json::Json >{
+        (std::vector< Json::Value >{
             expectedResponse,
         }),
         messagesReceived[1]
@@ -566,23 +566,23 @@ TEST_F(ChatRoomPluginTests, SetNickNameTwice) {
 
 TEST_F(ChatRoomPluginTests, RoomClearedAfterUnload) {
     // Have Bob join the chat room.
-    auto message = Json::JsonObject({
+    auto message = Json::Object({
         {"Type", "SetNickName"},
         {"NickName", "Bob"},
     });
     ws[0].SendText(message.ToEncoding());
-    auto expectedResponse = Json::JsonObject({
+    auto expectedResponse = Json::Object({
         {"Type", "Join"},
         {"NickName", "Bob"},
         {"Time", 0.0},
     });
-    auto expectedResponse2 = Json::JsonObject({
+    auto expectedResponse2 = Json::Object({
         {"Type", "SetNickNameResult"},
         {"Success", true},
         {"Time", 0.0},
     });
     ASSERT_EQ(
-        (std::vector< Json::Json >{
+        (std::vector< Json::Value >{
             expectedResponse,
             expectedResponse2,
         }),
@@ -595,17 +595,17 @@ TEST_F(ChatRoomPluginTests, RoomClearedAfterUnload) {
     SetUp();
 
     // Verify the assigned nickname list is empty.
-    message = Json::JsonObject({
+    message = Json::Object({
         {"Type", "GetNickNames"},
     });
     ws[0].SendText(message.ToEncoding());
-    expectedResponse = Json::JsonObject({
+    expectedResponse = Json::Object({
         {"Type", "NickNames"},
-        {"NickNames", Json::JsonArray({})},
+        {"NickNames", Json::Array({})},
         {"Time", 0.0},
     });
     ASSERT_EQ(
-        (std::vector< Json::Json >{
+        (std::vector< Json::Value >{
             expectedResponse,
         }),
         messagesReceived[0]
@@ -613,17 +613,17 @@ TEST_F(ChatRoomPluginTests, RoomClearedAfterUnload) {
     messagesReceived[0].clear();
 
     // Verify the available nickname list is full.
-    message = Json::JsonObject({
+    message = Json::Object({
         {"Type", "GetAvailableNickNames"},
     });
     ws[0].SendText(message.ToEncoding());
-    expectedResponse = Json::JsonObject({
+    expectedResponse = Json::Object({
         {"Type", "AvailableNickNames"},
         {"AvailableNickNames", availableNicknames},
         {"Time", 0.0},
     });
     ASSERT_EQ(
-        (std::vector< Json::Json >{
+        (std::vector< Json::Value >{
             expectedResponse,
         }),
         messagesReceived[0]
@@ -633,14 +633,14 @@ TEST_F(ChatRoomPluginTests, RoomClearedAfterUnload) {
 
 TEST_F(ChatRoomPluginTests, TellFromNonLurker) {
     // Bob joins the room.
-    auto message = Json::JsonObject({
+    auto message = Json::Object({
         {"Type", "SetNickName"},
         {"NickName", "Bob"},
     });
     ws[0].SendText(message.ToEncoding());
 
     // Alice joins the room.
-    message = Json::JsonObject({
+    message = Json::Object({
         {"Type", "SetNickName"},
         {"NickName", "Alice"},
     });
@@ -648,17 +648,17 @@ TEST_F(ChatRoomPluginTests, TellFromNonLurker) {
 
     // Bob peeks at the chat room member list.
     messagesReceived[0].clear();
-    message = Json::JsonObject({
+    message = Json::Object({
         {"Type", "GetNickNames"},
     });
     ws[0].SendText(message.ToEncoding());
-    auto expectedResponse = Json::JsonObject({
+    auto expectedResponse = Json::Object({
         {"Type", "NickNames"},
-        {"NickNames", Json::JsonArray({"Alice", "Bob"})},
+        {"NickNames", Json::Array({"Alice", "Bob"})},
         {"Time", 0.0},
     });
     ASSERT_EQ(
-        (std::vector< Json::Json >{
+        (std::vector< Json::Value >{
             expectedResponse,
         }),
         messagesReceived[0]
@@ -668,26 +668,26 @@ TEST_F(ChatRoomPluginTests, TellFromNonLurker) {
     server.timeKeeper->currentTime = 2.5;
     messagesReceived[0].clear();
     messagesReceived[1].clear();
-    message = Json::JsonObject({
+    message = Json::Object({
         {"Type", "Tell"},
         {"Tell", "142"},
     });
     ws[1].SendText(message.ToEncoding());
-    expectedResponse = Json::JsonObject({
+    expectedResponse = Json::Object({
         {"Type", "Tell"},
         {"Sender", "Alice"},
         {"Tell", "142"},
         {"Time", 2.5},
     });
     EXPECT_EQ(
-        (std::vector< Json::Json >{
+        (std::vector< Json::Value >{
             expectedResponse,
         }),
         messagesReceived[0]
     );
     messagesReceived[0].clear();
     EXPECT_EQ(
-        (std::vector< Json::Json >{
+        (std::vector< Json::Value >{
             expectedResponse,
         }),
         messagesReceived[1]
@@ -695,7 +695,7 @@ TEST_F(ChatRoomPluginTests, TellFromNonLurker) {
     messagesReceived[1].clear();
 
     // Bob says something (but it's empty).
-    message = Json::JsonObject({
+    message = Json::Object({
         {"Type", "Tell"},
         {"Tell", ""},
     });
@@ -704,7 +704,7 @@ TEST_F(ChatRoomPluginTests, TellFromNonLurker) {
     EXPECT_TRUE(messagesReceived[1].empty());
 
     // Bob says something (but it's not a number).
-    message = Json::JsonObject({
+    message = Json::Object({
         {"Type", "Tell"},
         {"Tell", "HeyGuys"},
     });
@@ -715,7 +715,7 @@ TEST_F(ChatRoomPluginTests, TellFromNonLurker) {
 
 TEST_F(ChatRoomPluginTests, Join) {
     // Bob joins the room.
-    auto message = Json::JsonObject({
+    auto message = Json::Object({
         {"Type", "SetNickName"},
         {"NickName", "Bob"},
     });
@@ -725,30 +725,30 @@ TEST_F(ChatRoomPluginTests, Join) {
     // about Alice joining.
     messagesReceived[0].clear();
     messagesReceived[1].clear();
-    message = Json::JsonObject({
+    message = Json::Object({
         {"Type", "SetNickName"},
         {"NickName", "Alice"},
     });
     ws[1].SendText(message.ToEncoding());
-    auto expectedResponse = Json::JsonObject({
+    auto expectedResponse = Json::Object({
         {"Type", "Join"},
         {"NickName", "Alice"},
         {"Time", 0.0},
     });
     EXPECT_EQ(
-        (std::vector< Json::Json >{
+        (std::vector< Json::Value >{
             expectedResponse,
         }),
         messagesReceived[0]
     );
     messagesReceived[0].clear();
-    auto expectedResponse2 = Json::JsonObject({
+    auto expectedResponse2 = Json::Object({
         {"Type", "SetNickNameResult"},
         {"Success", true},
         {"Time", 0.0},
     });
     ASSERT_EQ(
-        (std::vector< Json::Json >{
+        (std::vector< Json::Value >{
             expectedResponse,
             expectedResponse2,
         }),
@@ -759,7 +759,7 @@ TEST_F(ChatRoomPluginTests, Join) {
 
 TEST_F(ChatRoomPluginTests, Leave) {
     // Bob joins the room.
-    auto message = Json::JsonObject({
+    auto message = Json::Object({
         {"Type", "SetNickName"},
         {"NickName", "Bob"},
     });
@@ -768,7 +768,7 @@ TEST_F(ChatRoomPluginTests, Leave) {
 
     // Alice joins the room.
     messagesReceived[1].clear();
-    message = Json::JsonObject({
+    message = Json::Object({
         {"Type", "SetNickName"},
         {"NickName", "Alice"},
     });
@@ -797,20 +797,20 @@ TEST_F(ChatRoomPluginTests, Leave) {
     );
 
     // Bob peeks at the chat room member list.
-    message = Json::JsonObject({
+    message = Json::Object({
         {"Type", "GetNickNames"},
     });
     ws[0].SendText(message.ToEncoding());
     ASSERT_EQ(
-        (std::vector< Json::Json >{
-            Json::JsonObject({
+        (std::vector< Json::Value >{
+            Json::Object({
                 {"Type", "Leave"},
                 {"NickName", "Alice"},
                 {"Time", 0.0},
             }),
-            Json::JsonObject({
+            Json::Object({
                 {"Type", "NickNames"},
-                {"NickNames", Json::JsonArray({"Bob"})},
+                {"NickNames", Json::Array({"Bob"})},
                 {"Time", 0.0},
             }),
         }),
@@ -822,7 +822,7 @@ TEST_F(ChatRoomPluginTests, Leave) {
 TEST_F(ChatRoomPluginTests, SetNickNameInTrailer) {
     // Reopen a WebSocket connection with part of a
     // "SetNickName" message captured in the trailer.
-    auto message = Json::JsonObject({
+    auto message = Json::Object({
         {"Type", "SetNickName"},
         {"NickName", "Bob"},
     });
@@ -861,19 +861,19 @@ TEST_F(ChatRoomPluginTests, SetNickNameInTrailer) {
             frameSecondHalf.end()
         )
     );
-    auto expectedResponse = Json::JsonObject({
+    auto expectedResponse = Json::Object({
         {"Type", "Join"},
         {"NickName", "Bob"},
         {"Time", 0.0},
     });
     ASSERT_EQ(
-        (std::vector< Json::Json >{
-            Json::JsonObject({
+        (std::vector< Json::Value >{
+            Json::Object({
                 {"Type", "Join"},
                 {"NickName", "Bob"},
                 {"Time", 0.0},
             }),
-            Json::JsonObject({
+            Json::Object({
                 {"Type", "SetNickNameResult"},
                 {"Success", true},
                 {"Time", 0.0},
@@ -882,15 +882,15 @@ TEST_F(ChatRoomPluginTests, SetNickNameInTrailer) {
         messagesReceived[0]
     );
     messagesReceived[0].clear();
-    message = Json::JsonObject({
+    message = Json::Object({
         {"Type", "GetNickNames"},
     });
     ws[0].SendText(message.ToEncoding());
     ASSERT_EQ(
-        (std::vector< Json::Json >{
-            Json::JsonObject({
+        (std::vector< Json::Value >{
+            Json::Object({
                 {"Type", "NickNames"},
-                {"NickNames", Json::JsonArray({"Bob"})},
+                {"NickNames", Json::Array({"Bob"})},
                 {"Time", 0.0},
             }),
         }),
@@ -921,7 +921,7 @@ TEST_F(ChatRoomPluginTests, ConnectionNotUpgraded) {
 
 TEST_F(ChatRoomPluginTests, ChangeNickNameSingleConnectionNonLurkerToNonLurkerNotAlreadyInRoom) {
     // Set nickname to "Bob" initially on one connection.
-    auto message = Json::JsonObject({
+    auto message = Json::Object({
         {"Type", "SetNickName"},
         {"NickName", "Bob"},
     });
@@ -932,28 +932,28 @@ TEST_F(ChatRoomPluginTests, ChangeNickNameSingleConnectionNonLurkerToNonLurkerNo
     messagesReceived[0].clear();
     messagesReceived[1].clear();
     messagesReceived[2].clear();
-    message = Json::JsonObject({
+    message = Json::Object({
         {"Type", "SetNickName"},
         {"NickName", "PePe"},
     });
     ws[0].SendText(message.ToEncoding());
-    auto expectedResponse1 = Json::JsonObject({
+    auto expectedResponse1 = Json::Object({
         {"Type", "Leave"},
         {"NickName", "Bob"},
         {"Time", 0.0},
     });
-    auto expectedResponse2 = Json::JsonObject({
+    auto expectedResponse2 = Json::Object({
         {"Type", "Join"},
         {"NickName", "PePe"},
         {"Time", 0.0},
     });
-    auto expectedResponse3 = Json::JsonObject({
+    auto expectedResponse3 = Json::Object({
         {"Type", "SetNickNameResult"},
         {"Success", true},
         {"Time", 0.0},
     });
     EXPECT_EQ(
-        (std::vector< Json::Json >{
+        (std::vector< Json::Value >{
             expectedResponse1,
             expectedResponse2,
             expectedResponse3,
@@ -961,14 +961,14 @@ TEST_F(ChatRoomPluginTests, ChangeNickNameSingleConnectionNonLurkerToNonLurkerNo
         messagesReceived[0]
     );
     EXPECT_EQ(
-        (std::vector< Json::Json >{
+        (std::vector< Json::Value >{
             expectedResponse1,
             expectedResponse2,
         }),
         messagesReceived[1]
     );
     EXPECT_EQ(
-        (std::vector< Json::Json >{
+        (std::vector< Json::Value >{
             expectedResponse1,
             expectedResponse2,
         }),
@@ -983,14 +983,14 @@ TEST_F(ChatRoomPluginTests, ChangeNickNameSingleConnectionNonLurkerToNonLurkerNo
 
     // Verify nickname of "Bob" really did change to "PePe".
     messagesReceived[1].clear();
-    message = Json::JsonObject({
+    message = Json::Object({
         {"Type", "Tell"},
         {"Tell", "142"},
     });
     ws[0].SendText(message.ToEncoding());
     EXPECT_EQ(
-        (std::vector< Json::Json >{
-            Json::JsonObject({
+        (std::vector< Json::Value >{
+            Json::Object({
                 {"Type", "Tell"},
                 {"Sender", "PePe"},
                 {"Tell", "142"},
@@ -1001,20 +1001,20 @@ TEST_F(ChatRoomPluginTests, ChangeNickNameSingleConnectionNonLurkerToNonLurkerNo
     );
 
     // Verify Bob is now an available nickname, but PePe isn't.
-    auto nicknames = Json::Json(Json::Json::Type::Array);
+    auto nicknames = Json::Value(Json::Value::Type::Array);
     for (size_t i = 0; i < availableNicknames.GetSize(); ++i) {
         if (availableNicknames[i] != "PePe") {
             nicknames.Add(availableNicknames[i]);
         }
     }
     messagesReceived[1].clear();
-    message = Json::JsonObject({
+    message = Json::Object({
         {"Type", "GetAvailableNickNames"},
     });
     ws[1].SendText(message.ToEncoding());
     EXPECT_EQ(
-        (std::vector< Json::Json >{
-            Json::JsonObject({
+        (std::vector< Json::Value >{
+            Json::Object({
                 {"Type", "AvailableNickNames"},
                 {"AvailableNickNames", nicknames},
                 {"Time", 0.0},
@@ -1026,7 +1026,7 @@ TEST_F(ChatRoomPluginTests, ChangeNickNameSingleConnectionNonLurkerToNonLurkerNo
 
 TEST_F(ChatRoomPluginTests, ChangeNickNameOneConnectionNonLurkerToLurker) {
     // Set nickname to "Bob" initially on one connection.
-    auto message = Json::JsonObject({
+    auto message = Json::Object({
         {"Type", "SetNickName"},
         {"NickName", "Bob"},
     });
@@ -1037,30 +1037,30 @@ TEST_F(ChatRoomPluginTests, ChangeNickNameOneConnectionNonLurkerToLurker) {
     messagesReceived[0].clear();
     messagesReceived[1].clear();
     messagesReceived[2].clear();
-    message = Json::JsonObject({
+    message = Json::Object({
         {"Type", "SetNickName"},
         {"NickName", ""},
     });
     ws[0].SendText(message.ToEncoding());
-    auto expectedResponse = Json::JsonObject({
+    auto expectedResponse = Json::Object({
         {"Type", "SetNickNameResult"},
         {"Success", true},
         {"Time", 0.0},
     });
-    auto expectedResponse2 = Json::JsonObject({
+    auto expectedResponse2 = Json::Object({
         {"Type", "Leave"},
         {"NickName", "Bob"},
         {"Time", 0.0},
     });
     EXPECT_EQ(
-        (std::vector< Json::Json >{
+        (std::vector< Json::Value >{
             expectedResponse2,
             expectedResponse,
         }),
         messagesReceived[0]
     );
     EXPECT_EQ(
-        (std::vector< Json::Json >{
+        (std::vector< Json::Value >{
             expectedResponse2,
         }),
         messagesReceived[1]
@@ -1093,20 +1093,20 @@ TEST_F(ChatRoomPluginTests, ChangeNickNameOneConnectionNonLurkerToLurker) {
         );
     }
     EXPECT_EQ(
-        (std::vector< Json::Json >{
+        (std::vector< Json::Value >{
         }),
         messagesReceived[1]
     );
 
     // Verify Bob is now an available nickname.
     messagesReceived[1].clear();
-    message = Json::JsonObject({
+    message = Json::Object({
         {"Type", "GetAvailableNickNames"},
     });
     ws[1].SendText(message.ToEncoding());
     EXPECT_EQ(
-        (std::vector< Json::Json >{
-            Json::JsonObject({
+        (std::vector< Json::Value >{
+            Json::Object({
                 {"Type", "AvailableNickNames"},
                 {"AvailableNickNames", availableNicknames},
                 {"Time", 0.0},
@@ -1118,14 +1118,14 @@ TEST_F(ChatRoomPluginTests, ChangeNickNameOneConnectionNonLurkerToLurker) {
 
 TEST_F(ChatRoomPluginTests, ChangeNickNameLurkerToLurker) {
     // Change nickname to "" (which it already was).
-    auto message = Json::JsonObject({
+    auto message = Json::Object({
         {"Type", "SetNickName"},
         {"NickName", ""},
     });
     ws[0].SendText(message.ToEncoding());
     EXPECT_EQ(
-        (std::vector< Json::Json >{
-            Json::JsonObject({
+        (std::vector< Json::Value >{
+            Json::Object({
                 {"Type", "SetNickNameResult"},
                 {"Success", true},
                 {"Time", 0.0},
@@ -1134,12 +1134,12 @@ TEST_F(ChatRoomPluginTests, ChangeNickNameLurkerToLurker) {
         messagesReceived[0]
     );
     EXPECT_EQ(
-        (std::vector< Json::Json >{
+        (std::vector< Json::Value >{
         }),
         messagesReceived[1]
     );
     EXPECT_EQ(
-        (std::vector< Json::Json >{
+        (std::vector< Json::Value >{
         }),
         messagesReceived[2]
     );
@@ -1151,18 +1151,18 @@ TEST_F(ChatRoomPluginTests, ChangeNickNameLurkerToLurker) {
 }
 
 TEST_F(ChatRoomPluginTests, TellFromLurker) {
-    auto message = Json::JsonObject({
+    auto message = Json::Object({
         {"Type", "Tell"},
         {"Tell", "142"},
     });
     ws[0].SendText(message.ToEncoding());
     EXPECT_EQ(
-        (std::vector< Json::Json >{
+        (std::vector< Json::Value >{
         }),
         messagesReceived[0]
     );
     EXPECT_EQ(
-        (std::vector< Json::Json >{
+        (std::vector< Json::Value >{
         }),
         messagesReceived[1]
     );
@@ -1170,32 +1170,32 @@ TEST_F(ChatRoomPluginTests, TellFromLurker) {
 
 TEST_F(ChatRoomPluginTests, TwoTellsTooQuickly) {
     // Register as "Bob" and then say something.
-    auto message = Json::JsonObject({
+    auto message = Json::Object({
         {"Type", "SetNickName"},
         {"NickName", "Bob"},
     });
     ws[0].SendText(message.ToEncoding());
     messagesReceived[0].clear();
     messagesReceived[1].clear();
-    message = Json::JsonObject({
+    message = Json::Object({
         {"Type", "Tell"},
         {"Tell", "142"},
     });
     ws[0].SendText(message.ToEncoding());
-    auto expectedResponse = Json::JsonObject({
+    auto expectedResponse = Json::Object({
         {"Type", "Tell"},
         {"Sender", "Bob"},
         {"Tell", "142"},
         {"Time", 0.0},
     });
     EXPECT_EQ(
-        (std::vector< Json::Json >{
+        (std::vector< Json::Value >{
             expectedResponse,
         }),
         messagesReceived[0]
     );
     EXPECT_EQ(
-        (std::vector< Json::Json >{
+        (std::vector< Json::Value >{
             expectedResponse,
         }),
         messagesReceived[1]
@@ -1210,12 +1210,12 @@ TEST_F(ChatRoomPluginTests, TwoTellsTooQuickly) {
     messagesReceived[1].clear();
     ws[0].SendText(message.ToEncoding());
     EXPECT_EQ(
-        (std::vector< Json::Json >{
+        (std::vector< Json::Value >{
         }),
         messagesReceived[0]
     );
     EXPECT_EQ(
-        (std::vector< Json::Json >{
+        (std::vector< Json::Value >{
         }),
         messagesReceived[1]
     );
@@ -1228,20 +1228,20 @@ TEST_F(ChatRoomPluginTests, TwoTellsTooQuickly) {
     messagesReceived[0].clear();
     messagesReceived[1].clear();
     ws[0].SendText(message.ToEncoding());
-    expectedResponse = Json::JsonObject({
+    expectedResponse = Json::Object({
         {"Type", "Tell"},
         {"Sender", "Bob"},
         {"Tell", "142"},
         {"Time", 1.0},
     });
     EXPECT_EQ(
-        (std::vector< Json::Json >{
+        (std::vector< Json::Value >{
             expectedResponse,
         }),
         messagesReceived[0]
     );
     EXPECT_EQ(
-        (std::vector< Json::Json >{
+        (std::vector< Json::Value >{
             expectedResponse,
         }),
         messagesReceived[1]
@@ -1250,12 +1250,12 @@ TEST_F(ChatRoomPluginTests, TwoTellsTooQuickly) {
 
 TEST_F(ChatRoomPluginTests, GetUsers) {
     // Bob and Alice join the room.
-    auto message = Json::JsonObject({
+    auto message = Json::Object({
         {"Type", "SetNickName"},
         {"NickName", "Bob"},
     });
     ws[0].SendText(message.ToEncoding());
-    message = Json::JsonObject({
+    message = Json::Object({
         {"Type", "SetNickName"},
         {"NickName", "Alice"},
     });
@@ -1264,20 +1264,20 @@ TEST_F(ChatRoomPluginTests, GetUsers) {
     // Get the user list and verify point totals
     // are as expected.
     messagesReceived[0].clear();
-    message = Json::JsonObject({
+    message = Json::Object({
         {"Type", "GetUsers"},
     });
     ws[0].SendText(message.ToEncoding());
     ASSERT_EQ(
-        (std::vector< Json::Json >{
-            Json::JsonObject({
+        (std::vector< Json::Value >{
+            Json::Object({
                 {"Type", "Users"},
-                {"Users", Json::JsonArray({
-                    Json::JsonObject({
+                {"Users", Json::Array({
+                    Json::Object({
                         {"Nickname", "Bob"},
                         {"Points", 5},
                     }),
-                    Json::JsonObject({
+                    Json::Object({
                         {"Nickname", "Alice"},
                         {"Points", 0},
                     }),
@@ -1291,12 +1291,12 @@ TEST_F(ChatRoomPluginTests, GetUsers) {
 
 TEST_F(ChatRoomPluginTests, FirstAnswerScores) {
     // Bob and Alice join the room.
-    auto message = Json::JsonObject({
+    auto message = Json::Object({
         {"Type", "SetNickName"},
         {"NickName", "Bob"},
     });
     ws[0].SendText(message.ToEncoding());
-    message = Json::JsonObject({
+    message = Json::Object({
         {"Type", "SetNickName"},
         {"NickName", "Alice"},
     });
@@ -1306,7 +1306,7 @@ TEST_F(ChatRoomPluginTests, FirstAnswerScores) {
     SetNextAnswer("42");
 
     // Lurker tries to answer the current question.
-    message = Json::JsonObject({
+    message = Json::Object({
         {"Type", "Tell"},
         {"Tell", "42"},
     });
@@ -1324,21 +1324,21 @@ TEST_F(ChatRoomPluginTests, FirstAnswerScores) {
 
     // Expect both tells, but only Bob awarded a point.
     EXPECT_EQ(
-        (std::vector< Json::Json >{
-            Json::JsonObject({
+        (std::vector< Json::Value >{
+            Json::Object({
                 {"Type", "Tell"},
                 {"Sender", "Bob"},
                 {"Tell", "42"},
                 {"Time", 1.5},
             }),
-            Json::JsonObject({
+            Json::Object({
                 {"Type", "Award"},
                 {"Subject", "Bob"},
                 {"Award", 1},
                 {"Points", 6},
                 {"Time", 1.5},
             }),
-            Json::JsonObject({
+            Json::Object({
                 {"Type", "Tell"},
                 {"Sender", "Alice"},
                 {"Tell", "42"},
@@ -1351,20 +1351,20 @@ TEST_F(ChatRoomPluginTests, FirstAnswerScores) {
     // Get the user list and verify point totals
     // are as expected.
     messagesReceived[0].clear();
-    message = Json::JsonObject({
+    message = Json::Object({
         {"Type", "GetUsers"},
     });
     ws[0].SendText(message.ToEncoding());
     ASSERT_EQ(
-        (std::vector< Json::Json >{
-            Json::JsonObject({
+        (std::vector< Json::Value >{
+            Json::Object({
                 {"Type", "Users"},
-                {"Users", Json::JsonArray({
-                    Json::JsonObject({
+                {"Users", Json::Array({
+                    Json::Object({
                         {"Nickname", "Bob"},
                         {"Points", 6},
                     }),
-                    Json::JsonObject({
+                    Json::Object({
                         {"Nickname", "Alice"},
                         {"Points", 0},
                     }),
@@ -1378,12 +1378,12 @@ TEST_F(ChatRoomPluginTests, FirstAnswerScores) {
 
 TEST_F(ChatRoomPluginTests, IncorrectAnswersPenalizedBeforeCorrectAnswer) {
     // Bob and Alice join the room.
-    auto message = Json::JsonObject({
+    auto message = Json::Object({
         {"Type", "SetNickName"},
         {"NickName", "Bob"},
     });
     ws[0].SendText(message.ToEncoding());
-    message = Json::JsonObject({
+    message = Json::Object({
         {"Type", "SetNickName"},
         {"NickName", "Alice"},
     });
@@ -1395,7 +1395,7 @@ TEST_F(ChatRoomPluginTests, IncorrectAnswersPenalizedBeforeCorrectAnswer) {
     // Bob answers the current question incorrectly.
     messagesReceived[0].clear();
     messagesReceived[1].clear();
-    message = Json::JsonObject({
+    message = Json::Object({
         {"Type", "Tell"},
         {"Tell", "41"},
     });
@@ -1403,7 +1403,7 @@ TEST_F(ChatRoomPluginTests, IncorrectAnswersPenalizedBeforeCorrectAnswer) {
 
     // Alice answers the current question correctly.
     server.timeKeeper->currentTime = 1.0;
-    message = Json::JsonObject({
+    message = Json::Object({
         {"Type", "Tell"},
         {"Tell", "42"},
     });
@@ -1411,7 +1411,7 @@ TEST_F(ChatRoomPluginTests, IncorrectAnswersPenalizedBeforeCorrectAnswer) {
 
     // Bob answers the last question correctly, but a little too late.
     server.timeKeeper->currentTime = 1.1;
-    message = Json::JsonObject({
+    message = Json::Object({
         {"Type", "Tell"},
         {"Tell", "42"},
     });
@@ -1419,34 +1419,34 @@ TEST_F(ChatRoomPluginTests, IncorrectAnswersPenalizedBeforeCorrectAnswer) {
 
     // Expect both tells, but only Bob awarded a point.
     EXPECT_EQ(
-        (std::vector< Json::Json >{
-            Json::JsonObject({
+        (std::vector< Json::Value >{
+            Json::Object({
                 {"Type", "Tell"},
                 {"Sender", "Bob"},
                 {"Tell", "41"},
                 {"Time", 0.0},
             }),
-            Json::JsonObject({
+            Json::Object({
                 {"Type", "Penalty"},
                 {"Subject", "Bob"},
                 {"Penalty", 1},
                 {"Points", 4},
                 {"Time", 0.0},
             }),
-            Json::JsonObject({
+            Json::Object({
                 {"Type", "Tell"},
                 {"Sender", "Alice"},
                 {"Tell", "42"},
                 {"Time", 1.0},
             }),
-            Json::JsonObject({
+            Json::Object({
                 {"Type", "Award"},
                 {"Subject", "Alice"},
                 {"Award", 1},
                 {"Points", 1},
                 {"Time", 1.0},
             }),
-            Json::JsonObject({
+            Json::Object({
                 {"Type", "Tell"},
                 {"Sender", "Bob"},
                 {"Tell", "42"},
@@ -1459,20 +1459,20 @@ TEST_F(ChatRoomPluginTests, IncorrectAnswersPenalizedBeforeCorrectAnswer) {
     // Get the user list and verify point totals
     // are as expected.
     messagesReceived[0].clear();
-    message = Json::JsonObject({
+    message = Json::Object({
         {"Type", "GetUsers"},
     });
     ws[0].SendText(message.ToEncoding());
     ASSERT_EQ(
-        (std::vector< Json::Json >{
-            Json::JsonObject({
+        (std::vector< Json::Value >{
+            Json::Object({
                 {"Type", "Users"},
-                {"Users", Json::JsonArray({
-                    Json::JsonObject({
+                {"Users", Json::Array({
+                    Json::Object({
                         {"Nickname", "Bob"},
                         {"Points", 4},
                     }),
-                    Json::JsonObject({
+                    Json::Object({
                         {"Nickname", "Alice"},
                         {"Points", 1},
                     }),
@@ -1486,7 +1486,7 @@ TEST_F(ChatRoomPluginTests, IncorrectAnswersPenalizedBeforeCorrectAnswer) {
 
 TEST_F(ChatRoomPluginTests, MathQuestionPostedWhenNotOnCooldown) {
     // Bob joins the room.
-    auto message = Json::JsonObject({
+    auto message = Json::Object({
         {"Type", "SetNickName"},
         {"NickName", "Bob"},
     });
@@ -1503,26 +1503,26 @@ TEST_F(ChatRoomPluginTests, MathQuestionPostedWhenNotOnCooldown) {
     // Bob answers the current question.
     const auto question = GetNextQuestion();
     const auto answer = GetNextAnswer();
-    message = Json::JsonObject({
+    message = Json::Object({
         {"Type", "Tell"},
         {"Tell", answer},
     });
     ws[0].SendText(message.ToEncoding());
     EXPECT_EQ(
-        (std::vector< Json::Json >{
-            Json::JsonObject({
+        (std::vector< Json::Value >{
+            Json::Object({
                 {"Type", "Tell"},
                 {"Sender", "MathBot2000"},
                 {"Tell", question},
                 {"Time", 10.0},
             }),
-            Json::JsonObject({
+            Json::Object({
                 {"Type", "Tell"},
                 {"Sender", "Bob"},
                 {"Tell", answer},
                 {"Time", 11.0},
             }),
-            Json::JsonObject({
+            Json::Object({
                 {"Type", "Award"},
                 {"Subject", "Bob"},
                 {"Award", 1},

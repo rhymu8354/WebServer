@@ -12,7 +12,7 @@
 #include <functional>
 #include <Http/Server.hpp>
 #include <inttypes.h>
-#include <Json/Json.hpp>
+#include <Json/Value.hpp>
 #include <limits>
 #include <map>
 #include <mutex>
@@ -271,7 +271,7 @@ namespace {
          */
         void SendToUser(
             const User& user,
-            Json::Json message
+            Json::Value message
         ) {
             message.Set("Time", server->GetTimeKeeper()->GetCurrentTime());
             user.ws->SendText(message.ToEncoding());
@@ -289,7 +289,7 @@ namespace {
          */
         void SendToUsers(
             const std::map< unsigned int, User >& users,
-            const Json::Json& message
+            const Json::Value& message
         ) {
             for (auto& user: users) {
                 SendToUser(user.second, message);
@@ -302,7 +302,7 @@ namespace {
          * @param[in] message
          *     This is the message to send to all users.
          */
-        void SendToAll(const Json::Json& message) {
+        void SendToAll(const Json::Value& message) {
             SendToUsers(users, message);
         }
 
@@ -321,7 +321,7 @@ namespace {
             const std::string& sender
         ) {
             std::unique_lock< decltype(mutex) > lock(mutex);
-            const auto post = Json::JsonObject({
+            const auto post = Json::Object({
                 {"Type", "Tell"},
                 {"Sender", sender},
                 {"Tell", tell},
@@ -359,7 +359,7 @@ namespace {
                             userEntry = users.erase(userEntry);
                             if (!nickname.empty()) {
                                 (void)availableNickNames.insert(nickname);
-                                const auto response = Json::JsonObject({
+                                const auto response = Json::Object({
                                     {"Type", "Leave"},
                                     {"NickName", nickname},
                                 });
@@ -417,13 +417,13 @@ namespace {
          *     This is the entry of the user who sent the message.
          */
         void SetNickName(
-            const Json::Json& message,
+            const Json::Value& message,
             std::map< unsigned int, User >::iterator userEntry
         ) {
             const auto oldNickname = userEntry->second.nickname;
             const std::string newNickname = message["NickName"];
             const std::string password = message["Password"];
-            auto setNickNameResult = Json::JsonObject({
+            auto setNickNameResult = Json::Object({
                 {"Type", "SetNickNameResult"},
             });
             if (newNickname.empty()) {
@@ -440,7 +440,7 @@ namespace {
                         )
                     );
                     (void)availableNickNames.insert(oldNickname);
-                    const auto response = Json::JsonObject({
+                    const auto response = Json::Object({
                         {"Type", "Leave"},
                         {"NickName", oldNickname},
                     });
@@ -458,13 +458,13 @@ namespace {
                     userEntry->second.points = initialPoints[newNickname];
                     if (!oldNickname.empty()) {
                         (void)availableNickNames.insert(oldNickname);
-                        const auto response = Json::JsonObject({
+                        const auto response = Json::Object({
                             {"Type", "Leave"},
                             {"NickName", oldNickname},
                         });
                         SendToAll(response);
                     }
-                    const auto response = Json::JsonObject({
+                    const auto response = Json::Object({
                         {"Type", "Join"},
                         {"NickName", newNickname},
                     });
@@ -498,10 +498,10 @@ namespace {
          *     This is the entry of the user who sent the message.
          */
         void GetNickNames(
-            const Json::Json& message,
+            const Json::Value& message,
             std::map< unsigned int, User >::iterator userEntry
         ) {
-            auto response = Json::JsonObject({
+            auto response = Json::Object({
                 {"Type", "NickNames"},
             });
             std::set< std::string > nicknameSet;
@@ -510,7 +510,7 @@ namespace {
                     (void)nicknameSet.insert(user.second.nickname);
                 }
             }
-            Json::Json nicknames(Json::Json::Type::Array);
+            Json::Value nicknames(Json::Value::Type::Array);
             for (const auto& nickname: nicknameSet) {
                 nicknames.Add(nickname);
             }
@@ -532,7 +532,7 @@ namespace {
          *     This is the entry of the user who sent the message.
          */
         void Tell(
-            const Json::Json& message,
+            const Json::Value& message,
             std::map< unsigned int, User >::iterator userEntry
         ) {
             if (userEntry->second.nickname.empty()) {
@@ -559,7 +559,7 @@ namespace {
                 if (tell == answer) {
                     answeredCorrectly = true;
                     ++userEntry->second.points;
-                    const auto response = Json::JsonObject({
+                    const auto response = Json::Object({
                         {"Type", "Award"},
                         {"Subject", userEntry->second.nickname},
                         {"Award", 1},
@@ -568,7 +568,7 @@ namespace {
                     SendToAll(response);
                 } else {
                     --userEntry->second.points;
-                    const auto response = Json::JsonObject({
+                    const auto response = Json::Object({
                         {"Type", "Penalty"},
                         {"Subject", userEntry->second.nickname},
                         {"Penalty", 1},
@@ -590,14 +590,14 @@ namespace {
          *     This is the entry of the user who sent the message.
          */
         void GetAvailableNickNames(
-            const Json::Json& message,
+            const Json::Value& message,
             std::map< unsigned int, User >::iterator userEntry
         ) {
-            auto availableNickNamesAsJson = Json::JsonArray({});
+            auto availableNickNamesAsJson = Json::Array({});
             for (const auto& nickname: availableNickNames) {
                 availableNickNamesAsJson.Add(nickname);
             }
-            const auto response = Json::JsonObject({
+            const auto response = Json::Object({
                 {"Type", "AvailableNickNames"},
                 {"AvailableNickNames", availableNickNamesAsJson},
             });
@@ -615,17 +615,17 @@ namespace {
          *     This is the entry of the user who sent the message.
          */
         void GetUsers(
-            const Json::Json& message,
+            const Json::Value& message,
             std::map< unsigned int, User >::iterator userEntry
         ) {
-            auto response = Json::JsonObject({
+            auto response = Json::Object({
                 {"Type", "Users"},
             });
-            auto usersJson = Json::JsonArray({});
+            auto usersJson = Json::Array({});
             for (const auto& user: users) {
                 if (!user.second.nickname.empty()) {
                     usersJson.Add(
-                        Json::JsonObject({
+                        Json::Object({
                             {"Nickname", user.second.nickname},
                             {"Points", user.second.points},
                         })
@@ -658,7 +658,7 @@ namespace {
             if (userEntry == users.end()) {
                 return;
             }
-            const auto message = Json::Json::FromEncoding(data);
+            const auto message = Json::Value::FromEncoding(data);
             if (message["Type"] == "SetNickName") {
                 SetNickName(message, userEntry);
             } else if (message["Type"] == "GetNickNames") {
@@ -801,7 +801,7 @@ namespace {
  */
 extern "C" API void LoadPlugin(
     Http::IServer* server,
-    Json::Json configuration,
+    Json::Value configuration,
     SystemAbstractions::DiagnosticsSender::DiagnosticMessageDelegate diagnosticMessageDelegate,
     std::function< void() >& unloadDelegate
 ) {
@@ -828,7 +828,7 @@ extern "C" API void LoadPlugin(
 
     // Get available nicknames from configuration.
     const auto availableNickNamesJson = configuration["nicknames"];
-    if (availableNickNamesJson.GetType() == Json::Json::Type::Array) {
+    if (availableNickNamesJson.GetType() == Json::Value::Type::Array) {
         for (size_t i = 0; i < availableNickNamesJson.GetSize(); ++i) {
             (void)room.availableNickNames.insert(availableNickNamesJson[i]);
         }
@@ -837,13 +837,13 @@ extern "C" API void LoadPlugin(
     // Allow math question cooldown period range
     // to be configured.
     const auto mathQuiz = configuration["mathQuiz"];
-    if (mathQuiz.GetType() == Json::Json::Type::Object) {
+    if (mathQuiz.GetType() == Json::Value::Type::Object) {
         const auto minCooldownJson = mathQuiz["minCoolDown"];
-        if (minCooldownJson.GetType() == Json::Json::Type::FloatingPoint) {
+        if (minCooldownJson.GetType() == Json::Value::Type::FloatingPoint) {
             room.minQuestionCooldown = minCooldownJson;
         }
         const auto maxCooldownJson = mathQuiz["maxCoolDown"];
-        if (maxCooldownJson.GetType() == Json::Json::Type::FloatingPoint) {
+        if (maxCooldownJson.GetType() == Json::Value::Type::FloatingPoint) {
             room.maxQuestionCooldown = maxCooldownJson;
         }
     }
@@ -853,7 +853,7 @@ extern "C" API void LoadPlugin(
 
     // Get initial points from configuration.
     const auto initialPointsJson = configuration["initialPoints"];
-    if (initialPointsJson.GetType() == Json::Json::Type::Object) {
+    if (initialPointsJson.GetType() == Json::Value::Type::Object) {
         for (const auto nickname: initialPointsJson.GetKeys()) {
             room.initialPoints[nickname] = initialPointsJson[nickname];
         }
@@ -861,7 +861,7 @@ extern "C" API void LoadPlugin(
 
     // Allow tell timeout to be configured.
     const auto tellTimeoutJson = configuration["tellTimeout"];
-    if (tellTimeoutJson.GetType() == Json::Json::Type::FloatingPoint) {
+    if (tellTimeoutJson.GetType() == Json::Value::Type::FloatingPoint) {
         room.tellTimeout = tellTimeoutJson;
     }
 

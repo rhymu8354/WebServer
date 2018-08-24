@@ -23,7 +23,7 @@
 #endif /* _WIN32 / POSIX */
 extern "C" API void LoadPlugin(
     Http::IServer* server,
-    Json::Json configuration,
+    Json::Value configuration,
     SystemAbstractions::DiagnosticsSender::DiagnosticMessageDelegate diagnosticMessageDelegate,
     std::function< void() >& unloadDelegate
 );
@@ -144,7 +144,7 @@ struct EchoPluginTests
     // ::testing::Test
 
     virtual void SetUp() {
-        const auto config = Json::JsonObject({
+        const auto config = Json::Object({
             {"space", ECHO_PATH},
         });
         LoadPlugin(

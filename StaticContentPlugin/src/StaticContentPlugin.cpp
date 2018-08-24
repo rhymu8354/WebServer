@@ -10,7 +10,7 @@
 #include <functional>
 #include <Http/Server.hpp>
 #include <inttypes.h>
-#include <Json/Json.hpp>
+#include <Json/Value.hpp>
 #include <regex>
 #include <Sha1/Sha1.hpp>
 #include <SystemAbstractions/File.hpp>
@@ -67,7 +67,7 @@ namespace {
      */
     bool ConfigureSpaceMapping(
         SpaceMapping& spaceMapping,
-        Json::Json configuration,
+        Json::Value configuration,
         SystemAbstractions::DiagnosticsSender::DiagnosticMessageDelegate diagnosticMessageDelegate
     ) {
         // Determine the resource space we're serving.
@@ -133,7 +133,7 @@ namespace {
  */
 extern "C" API void LoadPlugin(
     Http::IServer* server,
-    Json::Json configuration,
+    Json::Value configuration,
     SystemAbstractions::DiagnosticsSender::DiagnosticMessageDelegate diagnosticMessageDelegate,
     std::function< void() >& unloadDelegate
 ) {
@@ -142,7 +142,7 @@ extern "C" API void LoadPlugin(
     std::vector< SpaceMapping > spaceMappings;
     if (
         configuration.Has("spaces")
-        && (configuration["spaces"].GetType() == Json::Json::Type::Array)
+        && (configuration["spaces"].GetType() == Json::Value::Type::Array)
     ) {
         const auto spaces = configuration["spaces"];
         for (size_t i = 0; i < spaces.GetSize(); ++i) {

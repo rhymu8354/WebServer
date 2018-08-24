@@ -21,7 +21,7 @@
 #endif /* _WIN32 / POSIX */
 extern "C" API void LoadPlugin(
     Http::IServer* server,
-    Json::Json configuration,
+    Json::Value configuration,
     SystemAbstractions::DiagnosticsSender::DiagnosticMessageDelegate diagnosticMessageDelegate,
     std::function< void() >& unloadDelegate
 );
@@ -149,7 +149,7 @@ struct StaticContentPluginTests
 TEST_F(StaticContentPluginTests, Load) {
     MockServer server;
     std::function< void() > unloadDelegate;
-    Json::Json config(Json::Json::Type::Object);
+    Json::Value config(Json::Value::Type::Object);
     config.Set("space", "/");
     config.Set("root", testAreaPath);
     LoadPlugin(
@@ -180,7 +180,7 @@ TEST_F(StaticContentPluginTests, ServeTestFile) {
     testFile.Close();
     MockServer server;
     std::function< void() > unloadDelegate;
-    Json::Json config(Json::Json::Type::Object);
+    Json::Value config(Json::Value::Type::Object);
     config.Set("space", "/");
     config.Set("root", testAreaPath);
     LoadPlugin(
@@ -216,7 +216,7 @@ TEST_F(StaticContentPluginTests, ConditionalGetWithMatchingEntityTagHitsCache) {
     // Configure plug-in.
     MockServer server;
     std::function< void() > unloadDelegate;
-    Json::Json config(Json::Json::Type::Object);
+    Json::Value config(Json::Value::Type::Object);
     config.Set("space", "/");
     config.Set("root", testAreaPath);
     LoadPlugin(
@@ -268,7 +268,7 @@ TEST_F(StaticContentPluginTests, EntityTagComputedFromSha1) {
     // Configure plug-in.
     MockServer server;
     std::function< void() > unloadDelegate;
-    Json::Json config(Json::Json::Type::Object);
+    Json::Value config(Json::Value::Type::Object);
     config.Set("space", "/");
     config.Set("root", testAreaPath);
     LoadPlugin(
@@ -318,16 +318,16 @@ TEST_F(StaticContentPluginTests, ServeMultipleResourceSpaces) {
     testFile2.Close();
     MockServer server;
     std::function< void() > unloadDelegate;
-    Json::Json config(Json::Json::Type::Object);
+    Json::Value config(Json::Value::Type::Object);
     config.Set(
         "spaces",
-        Json::JsonArray(
+        Json::Array(
             {
-                Json::JsonObject({
+                Json::Object({
                     {"space", "/foo"},
                     {"root", fooTestAreaPath},
                 }),
-                Json::JsonObject({
+                Json::Object({
                     {"space", "/bar"},
                     {"root", barTestAreaPath},
                 }),

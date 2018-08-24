@@ -11,7 +11,7 @@
 
 #include <functional>
 #include <Http/IServer.hpp>
-#include <Json/Json.hpp>
+#include <Json/Value.hpp>
 #include <SystemAbstractions/DiagnosticsSender.hpp>
 
 /**
@@ -38,7 +38,7 @@
  */
 typedef void (*PluginEntryPoint)(
     Http::IServer* server,
-    Json::Json configuration,
+    Json::Value configuration,
     SystemAbstractions::DiagnosticsSender::DiagnosticMessageDelegate diagnosticMessageDelegate,
     std::function< void() >& unloadDelegate
 );
