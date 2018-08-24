@@ -1,5 +1,5 @@
-#ifndef WEB_SERVER_PLUGIN_ENTRY_POINT_HPP
-#define WEB_SERVER_PLUGIN_ENTRY_POINT_HPP
+#ifndef PLUGIN_ENTRY_POINT_HPP
+#define PLUGIN_ENTRY_POINT_HPP
 
 /**
  * @file PluginEntryPoint.hpp
@@ -43,4 +43,4 @@ typedef void (*PluginEntryPoint)(
     std::function< void() >& unloadDelegate
 );
 
-#endif /* WEB_SERVER_PLUGIN_ENTRY_POINT_HPP */
+#endif /* PLUGIN_ENTRY_POINT_HPP */
