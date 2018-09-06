@@ -902,7 +902,7 @@ TEST_F(ChatRoomPluginTests, SetNickNameInTrailer) {
 TEST_F(ChatRoomPluginTests, ConnectionNotUpgraded) {
     const auto connection = std::make_shared< MockConnection >("mock-client", "mock-client:5555");
     std::string responseText;
-    connection->sendDataDelegate = [this, &responseText](
+    connection->sendDataDelegate = [&responseText](
         const std::vector< uint8_t >& data
     ){
         responseText += std::string(

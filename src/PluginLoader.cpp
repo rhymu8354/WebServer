@@ -242,7 +242,7 @@ struct PluginLoader::Impl {
 
 };
 
-PluginLoader::~PluginLoader() {
+PluginLoader::~PluginLoader() noexcept {
     StopBackgroundScanning();
 }
 
