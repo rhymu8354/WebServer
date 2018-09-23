@@ -31,6 +31,7 @@ target_link_libraries(${This} PUBLIC
     Http
     HttpNetworkTransport
     SystemAbstractions
+    TlsDecorator
 )
 
 if(UNIX AND NOT APPLE)

@@ -22,7 +22,9 @@
 #include <string>
 #include <SystemAbstractions/DiagnosticsStreamReporter.hpp>
 #include <SystemAbstractions/File.hpp>
+#include <SystemAbstractions/StringExtensions.hpp>
 #include <thread>
+#include <TlsDecorator/TlsDecorator.hpp>
 #include <vector>
 
 namespace {
@@ -197,6 +199,67 @@ namespace {
         return configuration;
     }
 
+
+    /**
+     * This function loads the contents of the file with the given path
+     * into the given string.
+     *
+     * @param[in] filePath
+     *     This is the path of the file to load.
+     *
+     * @param[in] fileDescription
+     *     This is a description of the file being loaded, used in any
+     *     diagnostic messages published by the function.
+     *
+     * @param[in] diagnosticMessageDelegate
+     *     This is the function to call to publish any diagnostic messages.
+     *
+     * @param[out] fileContents
+     *     This is where to store the file's contents.
+     *
+     * @return
+     *     An indication of whether or not the function succeeded is returned.
+     */
+    bool LoadFile(
+        const std::string& filePath,
+        const std::string& fileDescription,
+        SystemAbstractions::DiagnosticsSender::DiagnosticMessageDelegate diagnosticMessageDelegate,
+        std::string& fileContents
+    ) {
+        SystemAbstractions::File file(filePath);
+        if (file.Open()) {
+            std::vector< uint8_t > fileContentsAsVector(file.GetSize());
+            if (file.Read(fileContentsAsVector) != fileContentsAsVector.size()) {
+                diagnosticMessageDelegate(
+                    "WebServer",
+                    SystemAbstractions::DiagnosticsSender::Levels::ERROR,
+                    SystemAbstractions::sprintf(
+                        "Unable to read %s file '%s'",
+                        fileDescription.c_str(),
+                        filePath.c_str()
+                    )
+                );
+                return false;
+            }
+            (void)fileContents.assign(
+                (const char*)fileContentsAsVector.data(),
+                fileContentsAsVector.size()
+            );
+        } else {
+            diagnosticMessageDelegate(
+                "WebServer",
+                SystemAbstractions::DiagnosticsSender::Levels::ERROR,
+                SystemAbstractions::sprintf(
+                    "Unable to open %s file '%s'",
+                    fileDescription.c_str(),
+                    filePath.c_str()
+                )
+            );
+            return false;
+        }
+        return true;
+    }
+
     /**
      * This function assembles the configuration of the server, and uses it
      * to start server with the given transport layer.
@@ -225,6 +288,42 @@ namespace {
     ) {
         auto transport = std::make_shared< HttpNetworkTransport::HttpServerNetworkTransport >();
         transport->SubscribeToDiagnostics(diagnosticMessageDelegate, 0);
+        if (
+            configuration.Has("secure")
+            && configuration["secure"]
+        ) {
+            std::string cert, key, passphrase;
+            auto certPath = (std::string)configuration["sslCertificate"];
+            if (!SystemAbstractions::File::IsAbsolutePath(certPath)) {
+                certPath = SystemAbstractions::File::GetExeParentDirectory() + "/" + certPath;
+            }
+            if (!LoadFile(certPath, "SSL certificate", diagnosticMessageDelegate, cert)) {
+                return false;
+            }
+            auto keyPath = (std::string)configuration["sslKey"];
+            if (!SystemAbstractions::File::IsAbsolutePath(keyPath)) {
+                keyPath = SystemAbstractions::File::GetExeParentDirectory() + "/" + keyPath;
+            }
+            if (!LoadFile(keyPath, "SSL private key", diagnosticMessageDelegate, key)) {
+                return false;
+            }
+            passphrase = (std::string)configuration["sslKeyPassphrase"];
+            transport->SetConnectionDecoratorFactory(
+                [cert, key, passphrase, diagnosticMessageDelegate](
+                    std::shared_ptr< SystemAbstractions::INetworkConnection > connection
+                ){
+                    const auto tlsDecorator = std::make_shared< TlsDecorator::TlsDecorator >();
+                    tlsDecorator->SubscribeToDiagnostics(diagnosticMessageDelegate);
+                    tlsDecorator->ConfigureAsServer(
+                        connection,
+                        cert,
+                        key,
+                        passphrase
+                    );
+                    return tlsDecorator;
+                }
+            );
+        }
         Http::Server::MobilizationDependencies deps;
         deps.transport = transport;
         deps.timeKeeper = std::make_shared< TimeKeeper >();
