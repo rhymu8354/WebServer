@@ -292,6 +292,10 @@ namespace {
             configuration.Has("secure")
             && configuration["secure"]
         ) {
+            size_t sslDiagnosticsLevel = 0;
+            if (configuration["sslDiagnosticsLevel"].GetType() == Json::Value::Type::Integer) {
+                sslDiagnosticsLevel = (size_t)(int)configuration["sslDiagnosticsLevel"];
+            }
             std::string cert, key, passphrase;
             auto certPath = (std::string)configuration["sslCertificate"];
             if (!SystemAbstractions::File::IsAbsolutePath(certPath)) {
@@ -309,11 +313,14 @@ namespace {
             }
             passphrase = (std::string)configuration["sslKeyPassphrase"];
             transport->SetConnectionDecoratorFactory(
-                [cert, key, passphrase, diagnosticMessageDelegate](
+                [cert, key, passphrase, diagnosticMessageDelegate, sslDiagnosticsLevel](
                     std::shared_ptr< SystemAbstractions::INetworkConnection > connection
                 ){
                     const auto tlsDecorator = std::make_shared< TlsDecorator::TlsDecorator >();
-                    tlsDecorator->SubscribeToDiagnostics(diagnosticMessageDelegate);
+                    tlsDecorator->SubscribeToDiagnostics(
+                        diagnosticMessageDelegate,
+                        sslDiagnosticsLevel
+                    );
                     tlsDecorator->ConfigureAsServer(
                         connection,
                         cert,
