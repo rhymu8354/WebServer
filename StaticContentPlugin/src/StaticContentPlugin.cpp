@@ -198,7 +198,7 @@ extern "C" API void LoadPlugin(
                     if (file.Open()) {
                         SystemAbstractions::File::Buffer buffer(file.GetSize());
                         if (file.Read(buffer) == buffer.size()) {
-                            const auto etag = Sha1::Sha1String(buffer);
+                            auto etag = Sha1::Sha1String(buffer);
                             if (
                                 request.headers.HasHeader("If-None-Match")
                                 && (request.headers.GetHeaderValue("If-None-Match") == etag)
@@ -213,21 +213,31 @@ extern "C" API void LoadPlugin(
                                     buffer.end()
                                 );
                             }
+                            bool isWorthyOfBeingGzipped = false;
                             if (
                                 (path.length() >= 5)
                                 && (path.substr(path.length() - 5) == ".html")
                             ) {
                                 response.headers.AddHeader("Content-Type", "text/html");
+                                isWorthyOfBeingGzipped = true;
                             } else if (
                                 (path.length() >= 3)
                                 && (path.substr(path.length() - 3) == ".js")
                             ) {
                                 response.headers.AddHeader("Content-Type", "application/javascript");
+                                isWorthyOfBeingGzipped = true;
                             } else if (
                                 (path.length() >= 4)
                                 && (path.substr(path.length() - 4) == ".css")
                             ) {
                                 response.headers.AddHeader("Content-Type", "text/css");
+                                isWorthyOfBeingGzipped = true;
+                            } else if (
+                                (path.length() >= 4)
+                                && (path.substr(path.length() - 4) == ".txt")
+                            ) {
+                                response.headers.AddHeader("Content-Type", "text/plain");
+                                isWorthyOfBeingGzipped = true;
                             } else if (
                                 (path.length() >= 4)
                                 && (path.substr(path.length() - 4) == ".ico")
@@ -235,6 +245,13 @@ extern "C" API void LoadPlugin(
                                 response.headers.AddHeader("Content-Type", "image/x-icon");
                             } else {
                                 response.headers.AddHeader("Content-Type", "text/plain");
+                            }
+                            if (
+                                (request.headers.HasHeaderToken("Accept-Encoding", "gzip"))
+                                && isWorthyOfBeingGzipped
+                            )  {
+                                response.headers.SetHeader("Content-Encoding", "gzip");
+                                etag += "-gzip";
                             }
                             response.headers.AddHeader("ETag", etag);
                         } else {

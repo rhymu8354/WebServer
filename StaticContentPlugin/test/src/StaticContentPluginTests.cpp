@@ -362,3 +362,44 @@ TEST_F(StaticContentPluginTests, ServeMultipleResourceSpaces) {
     response = server.registeredResourceDelegates["bar"](request, nullptr, "");
     EXPECT_EQ("World!", response.body);
 }
+
+TEST_F(StaticContentPluginTests, GzipServedTestFileIfClientAcceptsIt) {
+    SystemAbstractions::File testFile(testAreaPath + "/foo.txt");
+    (void)testFile.Create();
+    (void)testFile.Write("Hello, World!", 6);
+    testFile.Close();
+    MockServer server;
+    std::function< void() > unloadDelegate;
+    Json::Value config(Json::Value::Type::Object);
+    config.Set("space", "/");
+    config.Set("root", testAreaPath);
+    LoadPlugin(
+        &server,
+        config,
+        [](
+            std::string senderName,
+            size_t level,
+            std::string message
+        ){
+            printf(
+                "[%s:%zu] %s\n",
+                senderName.c_str(),
+                level,
+                message.c_str()
+            );
+        },
+        unloadDelegate
+    );
+    Http::Request request;
+    request.headers.SetHeader("Accept-Encoding", "gzip");
+    request.target.SetPath({"foo.txt"});
+    const auto response = server.registeredResourceDelegate(request, nullptr, "");
+    EXPECT_EQ("gzip", response.headers.GetHeaderValue("Content-Encoding"));
+    ASSERT_TRUE(response.headers.HasHeader("ETag"));
+    EXPECT_EQ(
+        "-gzip",
+        response.headers.GetHeaderValue("ETag").substr(
+            response.headers.GetHeaderValue("ETag").length() - 5
+        )
+    );
+}
