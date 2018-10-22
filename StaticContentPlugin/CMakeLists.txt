@@ -17,9 +17,9 @@ set_target_properties(${This} PROPERTIES
 target_include_directories(${This} PRIVATE $<TARGET_PROPERTY:WebServer,INCLUDE_DIRECTORIES>)
 
 target_link_libraries(${This} PUBLIC
+    Hash
     Http
     Json
-    Sha1
     SystemAbstractions
     Uri
 )

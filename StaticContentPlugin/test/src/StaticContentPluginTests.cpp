@@ -9,7 +9,8 @@
 
 #include <gtest/gtest.h>
 #include <map>
-#include <Sha1/Sha1.hpp>
+#include <Hash/Templates.hpp>
+#include <Hash/Sha1.hpp>
 #include <stdio.h>
 #include <SystemAbstractions/File.hpp>
 #include <WebServer/PluginEntryPoint.hpp>
@@ -299,7 +300,7 @@ TEST_F(StaticContentPluginTests, EntityTagComputedFromSha1) {
     const auto actualEtag = response.headers.GetHeaderValue("ETag");
 
     // Verify entity tag was computed using SHA-1.
-    const auto expectedEtag = Sha1::Sha1String(testFileContent);
+    const auto expectedEtag = Hash::StringToString< Hash::Sha1 >(testFileContent);
     EXPECT_EQ(expectedEtag, actualEtag);
 }
 

@@ -12,7 +12,8 @@
 #include <inttypes.h>
 #include <Json/Value.hpp>
 #include <regex>
-#include <Sha1/Sha1.hpp>
+#include <Hash/Sha1.hpp>
+#include <Hash/Templates.hpp>
 #include <SystemAbstractions/File.hpp>
 #include <SystemAbstractions/StringExtensions.hpp>
 #include <WebServer/PluginEntryPoint.hpp>
@@ -198,7 +199,7 @@ extern "C" API void LoadPlugin(
                     if (file.Open()) {
                         SystemAbstractions::File::Buffer buffer(file.GetSize());
                         if (file.Read(buffer) == buffer.size()) {
-                            auto etag = Sha1::Sha1String(buffer);
+                            auto etag = Hash::BytesToString< Hash::Sha1 >(buffer);
                             if (
                                 request.headers.HasHeader("If-None-Match")
                                 && (request.headers.GetHeaderValue("If-None-Match") == etag)
