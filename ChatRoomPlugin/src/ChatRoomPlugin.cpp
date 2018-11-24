@@ -728,6 +728,15 @@ namespace {
         ) {
             std::lock_guard< decltype(mutex) > lock(mutex);
             Http::Response response;
+            if (
+                !request.headers.HasHeaderToken("Connection", "upgrade")
+                || (SystemAbstractions::ToLower(request.headers.GetHeaderValue("Upgrade")) != "websocket")
+            ) {
+                response.statusCode = 200;
+                response.headers.SetHeader("Content-Type", "text/plain");
+                response.body = "Try again, but next time use a WebSocket.  Kthxbye!";
+                return response;
+            }
             const auto sessionId = nextSessionId++;
             auto& user = users[sessionId];
             user.ws = std::make_shared< WebSockets::WebSocket >();
@@ -768,9 +777,6 @@ namespace {
                 )
             ) {
                 (void)users.erase(sessionId);
-                response.statusCode = 200;
-                response.headers.SetHeader("Content-Type", "text/plain");
-                response.body = "Try again, but next time use a WebSocket.  Kthxbye!";
             }
             return response;
         }

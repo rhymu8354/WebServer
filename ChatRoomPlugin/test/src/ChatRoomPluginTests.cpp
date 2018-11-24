@@ -854,49 +854,8 @@ TEST_F(ChatRoomPluginTests, SetNickNameInTrailer) {
     InitilizeClientWebSocket(0);
     ws[0].StartOpenAsClient(openRequest);
     const auto openResponse = server.registeredResourceDelegate(openRequest, serverConnection[0], frameFirstHalf);
-    ASSERT_TRUE(ws[0].FinishOpenAsClient(clientConnection[0], openResponse));
-    serverConnection[0]->dataReceivedDelegate(
-        std::vector< uint8_t >(
-            frameSecondHalf.begin(),
-            frameSecondHalf.end()
-        )
-    );
-    auto expectedResponse = Json::Object({
-        {"Type", "Join"},
-        {"NickName", "Bob"},
-        {"Time", 0.0},
-    });
-    ASSERT_EQ(
-        (std::vector< Json::Value >{
-            Json::Object({
-                {"Type", "Join"},
-                {"NickName", "Bob"},
-                {"Time", 0.0},
-            }),
-            Json::Object({
-                {"Type", "SetNickNameResult"},
-                {"Success", true},
-                {"Time", 0.0},
-            }),
-        }),
-        messagesReceived[0]
-    );
-    messagesReceived[0].clear();
-    message = Json::Object({
-        {"Type", "GetNickNames"},
-    });
-    ws[0].SendText(message.ToEncoding());
-    ASSERT_EQ(
-        (std::vector< Json::Value >{
-            Json::Object({
-                {"Type", "NickNames"},
-                {"NickNames", Json::Array({"Bob"})},
-                {"Time", 0.0},
-            }),
-        }),
-        messagesReceived[0]
-    );
-    messagesReceived[0].clear();
+    EXPECT_FALSE(ws[0].FinishOpenAsClient(clientConnection[0], openResponse));
+    EXPECT_EQ(400, openResponse.statusCode);
 }
 
 TEST_F(ChatRoomPluginTests, ConnectionNotUpgraded) {
