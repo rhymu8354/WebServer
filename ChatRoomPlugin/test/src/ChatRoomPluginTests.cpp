@@ -789,11 +789,8 @@ TEST_F(ChatRoomPluginTests, Leave) {
         );
     }
     ASSERT_EQ(
-        (std::vector< std::string >{
-            "Session #2[1]: Connection to mock-server-1:5555 closed ()",
-            "Session #2[1]: Connection to mock-server-1:5555 closed by peer",
-        }),
-        diagnosticMessages
+        "Session #2[1]: Connection to mock-server-1:5555 closed by peer",
+        diagnosticMessages[0]
     );
 
     // Bob peeks at the chat room member list.
