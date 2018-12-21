@@ -757,17 +757,17 @@ namespace {
                     );
                 }
             );
-            user.ws->SetTextDelegate(
-                [this, sessionId](const std::string& data){ ReceiveMessage(sessionId, data); }
-            );
-            user.ws->SetCloseDelegate(
-                [this, sessionId](
-                    unsigned int code,
-                    const std::string& reason
-                ){
-                    RemoveUser(sessionId, code, reason);
-                }
-            );
+            WebSockets::WebSocket::Delegates wsDelegates;
+            wsDelegates.text = [this, sessionId](const std::string& data){
+                ReceiveMessage(sessionId, data);
+            };
+            wsDelegates.close = [this, sessionId](
+                unsigned int code,
+                const std::string& reason
+            ){
+                RemoveUser(sessionId, code, reason);
+            };
+            user.ws->SetDelegates(std::move(wsDelegates));
             if (
                 !user.ws->OpenAsServer(
                     connection,

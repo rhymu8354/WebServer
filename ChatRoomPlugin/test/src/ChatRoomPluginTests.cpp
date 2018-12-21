@@ -344,23 +344,21 @@ struct ChatRoomPluginTests
             clientConnection[i]->ReceiveData(data);
         };
         wsClosed[i] = false;
-        ws[i].SetTextDelegate(
-            [this, i](const std::string& data){
-                std::lock_guard< decltype(mutex) > lock(mutex);
-                messagesReceived[i].push_back(Json::Value::FromEncoding(data));
-                waitCondition.notify_all();
-            }
-        );
-        ws[i].SetCloseDelegate(
-            [this, i](
-                unsigned int code,
-                const std::string& reason
-            ){
-                std::lock_guard< decltype(mutex) > lock(mutex);
-                wsClosed[i] = true;
-                waitCondition.notify_all();
-            }
-        );
+        WebSockets::WebSocket::Delegates wsDelegates;
+        wsDelegates.text = [this, i](const std::string& data){
+            std::lock_guard< decltype(mutex) > lock(mutex);
+            messagesReceived[i].push_back(Json::Value::FromEncoding(data));
+            waitCondition.notify_all();
+        };
+        wsDelegates.close = [this, i](
+            unsigned int code,
+            const std::string& reason
+        ){
+            std::lock_guard< decltype(mutex) > lock(mutex);
+            wsClosed[i] = true;
+            waitCondition.notify_all();
+        };
+        ws[i].SetDelegates(std::move(wsDelegates));
     }
 
     // ::testing::Test
