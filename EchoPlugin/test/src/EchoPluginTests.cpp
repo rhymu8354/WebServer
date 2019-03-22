@@ -4,7 +4,7 @@
  * This module contains the unit tests of the
  * Echo web-server plugin.
  *
- * © 2018 by Richard Walters
+ * © 2018-2019 by Richard Walters
  */
 
 #include <gtest/gtest.h>
@@ -109,6 +109,29 @@ namespace {
 
         virtual std::shared_ptr< Http::TimeKeeper > GetTimeKeeper() override {
             return timeKeeper;
+        }
+
+        virtual void Ban(
+            const std::string& peerAddress,
+            const std::string& reason
+        ) override {
+        }
+
+        virtual void Unban(const std::string& peerAddress) override {
+        }
+
+        virtual std::set< std::string > GetBans() override {
+            return {};
+        }
+
+        virtual void WhitelistAdd(const std::string& peerAddress) override {
+        }
+
+        virtual void WhitelistRemove(const std::string& peerAddress) override {
+        }
+
+        virtual std::set< std::string > GetWhitelist() override {
+            return {};
         }
     };
 
