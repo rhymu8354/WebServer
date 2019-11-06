@@ -129,6 +129,12 @@ namespace {
             return []{};
         }
 
+        virtual UnregistrationDelegate RegisterBanDelegate(
+            BanDelegate banDelegate
+        ) override {
+            return []{};
+        }
+
         virtual std::shared_ptr< Http::TimeKeeper > GetTimeKeeper() override {
             return timeKeeper;
         }
