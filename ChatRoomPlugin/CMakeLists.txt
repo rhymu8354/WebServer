@@ -19,7 +19,7 @@ target_include_directories(${This} PRIVATE $<TARGET_PROPERTY:WebServer,INCLUDE_D
 target_link_libraries(${This} PUBLIC
     Http
     Json
-    SystemAbstractions
+    StringExtensions
     Uri
     WebSockets
 )

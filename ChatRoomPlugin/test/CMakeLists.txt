@@ -24,6 +24,8 @@ target_link_libraries(${This} PUBLIC
     ChatRoomPlugin
     Json
     Uri
+    StringExtensions
+    SystemAbstractions
     WebSockets
 )
 

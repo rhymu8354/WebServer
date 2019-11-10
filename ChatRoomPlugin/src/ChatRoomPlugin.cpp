@@ -20,7 +20,7 @@
 #include <set>
 #include <stdlib.h>
 #include <string>
-#include <SystemAbstractions/StringExtensions.hpp>
+#include <StringExtensions/StringExtensions.hpp>
 #include <thread>
 #include <time.h>
 #include <vector>
@@ -385,13 +385,13 @@ namespace {
                         questionComponents[0] = std::uniform_int_distribution<>(2, 10)(generator);
                         questionComponents[1] = std::uniform_int_distribution<>(2, 10)(generator);
                         questionComponents[2] = std::uniform_int_distribution<>(2, 97)(generator);
-                        question = SystemAbstractions::sprintf(
+                        question = StringExtensions::sprintf(
                             "What is %d * %d + %d?",
                             questionComponents[0],
                             questionComponents[1],
                             questionComponents[2]
                         );
-                        answer = SystemAbstractions::sprintf(
+                        answer = StringExtensions::sprintf(
                             "%d",
                             questionComponents[0] * questionComponents[1] + questionComponents[2]
                         );
@@ -433,7 +433,7 @@ namespace {
                     diagnosticMessageDelegate(
                         userEntry->second.diagnosticsSenderName,
                         1,
-                        SystemAbstractions::sprintf(
+                        StringExtensions::sprintf(
                             "Nickname changed from '%s' to '%s'",
                             oldNickname.c_str(),
                             newNickname.c_str()
@@ -473,7 +473,7 @@ namespace {
                     diagnosticMessageDelegate(
                         userEntry->second.diagnosticsSenderName,
                         1,
-                        SystemAbstractions::sprintf(
+                        StringExtensions::sprintf(
                             "Nickname changed from '%s' to '%s'",
                             oldNickname.c_str(),
                             newNickname.c_str()
@@ -548,8 +548,8 @@ namespace {
             }
             intmax_t tellAsNumber;
             if (
-                SystemAbstractions::ToInteger(tell, tellAsNumber)
-                != SystemAbstractions::ToIntegerResult::Success
+                StringExtensions::ToInteger(tell, tellAsNumber)
+                != StringExtensions::ToIntegerResult::Success
             ) {
                 return;
             }
@@ -730,7 +730,7 @@ namespace {
             Http::Response response;
             if (
                 !request.headers.HasHeaderToken("Connection", "upgrade")
-                || (SystemAbstractions::ToLower(request.headers.GetHeaderValue("Upgrade")) != "websocket")
+                || (StringExtensions::ToLower(request.headers.GetHeaderValue("Upgrade")) != "websocket")
             ) {
                 response.statusCode = 200;
                 response.headers.SetHeader("Content-Type", "text/plain");
@@ -740,7 +740,7 @@ namespace {
             const auto sessionId = nextSessionId++;
             auto& user = users[sessionId];
             user.ws = std::make_shared< WebSockets::WebSocket >();
-            const auto diagnosticsSenderName = SystemAbstractions::sprintf(
+            const auto diagnosticsSenderName = StringExtensions::sprintf(
                 "Session #%zu", sessionId
             );
             user.diagnosticsSenderName = diagnosticsSenderName;

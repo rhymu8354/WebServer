@@ -11,8 +11,8 @@
 #include <regex>
 #include <stdio.h>
 #include <string>
+#include <StringExtensions/StringExtensions.hpp>
 #include <SystemAbstractions/File.hpp>
-#include <SystemAbstractions/StringExtensions.hpp>
 #include <vector>
 #include <WebServer/PluginEntryPoint.hpp>
 
@@ -185,7 +185,7 @@ struct EchoPluginTests
                 std::string message
             ){
                 diagnosticMessages.push_back(
-                    SystemAbstractions::sprintf(
+                    StringExtensions::sprintf(
                         "%s[%zu]: %s",
                         senderName.c_str(),
                         level,

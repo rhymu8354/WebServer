@@ -12,8 +12,8 @@
 #include <functional>
 #include <map>
 #include <mutex>
+#include <StringExtensions/StringExtensions.hpp>
 #include <SystemAbstractions/DirectoryMonitor.hpp>
-#include <SystemAbstractions/StringExtensions.hpp>
 #include <thread>
 
 /**
@@ -152,7 +152,7 @@ struct PluginLoader::Impl {
                         diagnosticMessageDelegate(
                             "PluginLoader",
                             SystemAbstractions::DiagnosticsSender::Levels::WARNING,
-                            SystemAbstractions::sprintf(
+                            StringExtensions::sprintf(
                                 "plugin '%s' failed to copy...will attempt to copy and load again soon",
                                 plugin.first.c_str()
                             )
@@ -171,7 +171,7 @@ struct PluginLoader::Impl {
 
             // Mark the plug-in as being loadable if it changed.
             if (changed) {
-                diagnosticMessageDelegate("PluginLoader", 0, SystemAbstractions::sprintf("plugin '%s' appears to have changed", plugin.first.c_str()));
+                diagnosticMessageDelegate("PluginLoader", 0, StringExtensions::sprintf("plugin '%s' appears to have changed", plugin.first.c_str()));
                 plugin.second->loadable = true;
             }
 
@@ -190,7 +190,7 @@ struct PluginLoader::Impl {
                     diagnosticMessageDelegate(
                         "PluginLoader",
                         SystemAbstractions::DiagnosticsSender::Levels::WARNING,
-                        SystemAbstractions::sprintf(
+                        StringExtensions::sprintf(
                             "plugin '%s' failed to copy...will attempt to copy and load again soon",
                             plugin.first.c_str()
                         )

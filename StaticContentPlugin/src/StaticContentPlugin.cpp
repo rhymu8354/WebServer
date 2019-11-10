@@ -14,8 +14,8 @@
 #include <regex>
 #include <Hash/Sha1.hpp>
 #include <Hash/Templates.hpp>
+#include <StringExtensions/StringExtensions.hpp>
 #include <SystemAbstractions/File.hpp>
-#include <SystemAbstractions/StringExtensions.hpp>
 #include <WebServer/PluginEntryPoint.hpp>
 
 #ifdef _WIN32
@@ -183,10 +183,10 @@ extern "C" API void LoadPlugin(
                 std::shared_ptr< Http::Connection > connection,
                 const std::string& trailer
             ){
-                const auto path = SystemAbstractions::Join(
+                const auto path = StringExtensions::Join(
                     {
                         root,
-                        SystemAbstractions::Join(request.target.GetPath(), "/")
+                        StringExtensions::Join(request.target.GetPath(), "/")
                     },
                     "/"
                 );
@@ -259,7 +259,7 @@ extern "C" API void LoadPlugin(
                             response.statusCode = 500;
                             response.reasonPhrase = "Unable to read file";
                             response.headers.AddHeader("Content-Type", "text/plain");
-                            response.body = SystemAbstractions::sprintf(
+                            response.body = StringExtensions::sprintf(
                                 "Error reading file '%s'",
                                 path.c_str()
                             );
@@ -268,7 +268,7 @@ extern "C" API void LoadPlugin(
                         response.statusCode = 500;
                         response.reasonPhrase = "Unable to open file";
                         response.headers.AddHeader("Content-Type", "text/plain");
-                        response.body = SystemAbstractions::sprintf(
+                        response.body = StringExtensions::sprintf(
                             "Error opening file '%s'",
                             path.c_str()
                         );
@@ -277,12 +277,12 @@ extern "C" API void LoadPlugin(
                     response.statusCode = 404;
                     response.reasonPhrase = "Not Found";
                     response.headers.AddHeader("Content-Type", "text/plain");
-                    response.body = SystemAbstractions::sprintf(
+                    response.body = StringExtensions::sprintf(
                         "File '%s' not found.",
                         path.c_str()
                     );
                 }
-                response.headers.AddHeader("Content-Length", SystemAbstractions::sprintf("%zu", response.body.length()));
+                response.headers.AddHeader("Content-Length", StringExtensions::sprintf("%zu", response.body.length()));
                 return response;
             }
         );

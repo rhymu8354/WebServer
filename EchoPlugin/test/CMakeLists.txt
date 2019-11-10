@@ -22,6 +22,8 @@ target_include_directories(${This} PRIVATE $<TARGET_PROPERTY:WebServer,INCLUDE_D
 target_link_libraries(${This} PUBLIC
     gtest_main
     EchoPlugin
+    StringExtensions
+    SystemAbstractions
 )
 
 add_custom_command(TARGET ${This} POST_BUILD

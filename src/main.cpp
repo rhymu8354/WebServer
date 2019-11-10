@@ -20,9 +20,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string>
+#include <StringExtensions/StringExtensions.hpp>
 #include <SystemAbstractions/DiagnosticsStreamReporter.hpp>
 #include <SystemAbstractions/File.hpp>
-#include <SystemAbstractions/StringExtensions.hpp>
 #include <thread>
 #include <TlsDecorator/TlsDecorator.hpp>
 #include <vector>
@@ -233,7 +233,7 @@ namespace {
                 diagnosticMessageDelegate(
                     "WebServer",
                     SystemAbstractions::DiagnosticsSender::Levels::ERROR,
-                    SystemAbstractions::sprintf(
+                    StringExtensions::sprintf(
                         "Unable to read %s file '%s'",
                         fileDescription.c_str(),
                         filePath.c_str()
@@ -249,7 +249,7 @@ namespace {
             diagnosticMessageDelegate(
                 "WebServer",
                 SystemAbstractions::DiagnosticsSender::Levels::ERROR,
-                SystemAbstractions::sprintf(
+                StringExtensions::sprintf(
                     "Unable to open %s file '%s'",
                     fileDescription.c_str(),
                     filePath.c_str()

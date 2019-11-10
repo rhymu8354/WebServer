@@ -9,7 +9,7 @@
 
 #include "Plugin.hpp"
 
-#include <SystemAbstractions/StringExtensions.hpp>
+#include <StringExtensions/StringExtensions.hpp>
 #include <WebServer/PluginEntryPoint.hpp>
 
 Plugin::Plugin(
@@ -27,14 +27,14 @@ void Plugin::Load(
     Http::Server& server,
     SystemAbstractions::DiagnosticsSender::DiagnosticMessageDelegate diagnosticMessageDelegate
 ) {
-    diagnosticMessageDelegate("WebServer", 0, SystemAbstractions::sprintf("Copying plug-in '%s'", pluginName.c_str()));
+    diagnosticMessageDelegate("WebServer", 0, StringExtensions::sprintf("Copying plug-in '%s'", pluginName.c_str()));
     if (imageFile.Copy(runtimeFile.GetPath())) {
-        diagnosticMessageDelegate("WebServer", 0, SystemAbstractions::sprintf("Linking plug-in '%s'", pluginName.c_str()));
+        diagnosticMessageDelegate("WebServer", 0, StringExtensions::sprintf("Linking plug-in '%s'", pluginName.c_str()));
         if (runtimeLibrary.Load(pluginsRuntimePath, moduleName)) {
-            diagnosticMessageDelegate("WebServer", 0, SystemAbstractions::sprintf("Locating plug-in '%s' entrypoint", pluginName.c_str()));
+            diagnosticMessageDelegate("WebServer", 0, StringExtensions::sprintf("Locating plug-in '%s' entrypoint", pluginName.c_str()));
             const auto loadPlugin = (PluginEntryPoint)runtimeLibrary.GetProcedure("LoadPlugin");
             if (loadPlugin != nullptr) {
-                diagnosticMessageDelegate("WebServer", 0, SystemAbstractions::sprintf("Loading plug-in '%s'", pluginName.c_str()));
+                diagnosticMessageDelegate("WebServer", 0, StringExtensions::sprintf("Loading plug-in '%s'", pluginName.c_str()));
                 loadPlugin(
                     &server,
                     configuration,
@@ -51,7 +51,7 @@ void Plugin::Load(
                             );
                         } else {
                             diagnosticMessageDelegate(
-                                SystemAbstractions::sprintf(
+                                StringExtensions::sprintf(
                                     "%s/%s",
                                     pluginName.c_str(),
                                     senderName.c_str()
@@ -67,20 +67,20 @@ void Plugin::Load(
                     diagnosticMessageDelegate(
                         "",
                         SystemAbstractions::DiagnosticsSender::Levels::WARNING,
-                        SystemAbstractions::sprintf(
+                        StringExtensions::sprintf(
                             "plugin '%s' failed to load",
                             pluginName.c_str()
                         )
                     );
                     loadable = false;
                 } else {
-                    diagnosticMessageDelegate("WebServer", 1, SystemAbstractions::sprintf("Plug-in '%s' loaded", pluginName.c_str()));
+                    diagnosticMessageDelegate("WebServer", 1, StringExtensions::sprintf("Plug-in '%s' loaded", pluginName.c_str()));
                 }
             } else {
                 diagnosticMessageDelegate(
                     "WebServer",
                     SystemAbstractions::DiagnosticsSender::Levels::WARNING,
-                    SystemAbstractions::sprintf(
+                    StringExtensions::sprintf(
                         "unable to find plugin '%s' entrypoint",
                         pluginName.c_str()
                     )
@@ -94,7 +94,7 @@ void Plugin::Load(
             diagnosticMessageDelegate(
                 "WebServer",
                 SystemAbstractions::DiagnosticsSender::Levels::WARNING,
-                SystemAbstractions::sprintf(
+                StringExtensions::sprintf(
                     "unable to link plugin '%s' library",
                     pluginName.c_str()
                 )
@@ -108,7 +108,7 @@ void Plugin::Load(
         diagnosticMessageDelegate(
             "WebServer",
             SystemAbstractions::DiagnosticsSender::Levels::WARNING,
-            SystemAbstractions::sprintf(
+            StringExtensions::sprintf(
                 "unable to copy plugin '%s' library",
                 pluginName.c_str()
             )
@@ -123,9 +123,9 @@ void Plugin::Unload(
     if (unloadDelegate == nullptr) {
         return;
     }
-    diagnosticMessageDelegate("WebServer", 0, SystemAbstractions::sprintf("Unloading plug-in '%s'", pluginName.c_str()));
+    diagnosticMessageDelegate("WebServer", 0, StringExtensions::sprintf("Unloading plug-in '%s'", pluginName.c_str()));
     unloadDelegate();
     unloadDelegate = nullptr;
     runtimeLibrary.Unload();
-    diagnosticMessageDelegate("WebServer", 1, SystemAbstractions::sprintf("Plug-in '%s' unloaded", pluginName.c_str()));
+    diagnosticMessageDelegate("WebServer", 1, StringExtensions::sprintf("Plug-in '%s' unloaded", pluginName.c_str()));
 }

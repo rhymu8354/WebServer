@@ -13,7 +13,7 @@
 #include <inttypes.h>
 #include <Json/Value.hpp>
 #include <sstream>
-#include <SystemAbstractions/StringExtensions.hpp>
+#include <StringExtensions/StringExtensions.hpp>
 #include <WebServer/PluginEntryPoint.hpp>
 
 #ifdef _WIN32
@@ -108,7 +108,7 @@ extern "C" API void LoadPlugin(
                 ""
                 "</html>"
             );
-            response.headers.AddHeader("Content-Length", SystemAbstractions::sprintf("%zu", response.body.length()));
+            response.headers.AddHeader("Content-Length", StringExtensions::sprintf("%zu", response.body.length()));
             return response;
         }
     );

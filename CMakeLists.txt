@@ -30,6 +30,7 @@ target_link_libraries(${This} PUBLIC
     Json
     Http
     HttpNetworkTransport
+    StringExtensions
     SystemAbstractions
     TlsDecorator
 )

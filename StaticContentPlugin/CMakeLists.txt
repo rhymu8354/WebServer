@@ -20,6 +20,7 @@ target_link_libraries(${This} PUBLIC
     Hash
     Http
     Json
+    StringExtensions
     SystemAbstractions
     Uri
 )

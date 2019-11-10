@@ -13,8 +13,8 @@
 #include <mutex>
 #include <stdio.h>
 #include <string>
+#include <StringExtensions/StringExtensions.hpp>
 #include <SystemAbstractions/File.hpp>
-#include <SystemAbstractions/StringExtensions.hpp>
 #include <vector>
 #include <WebServer/PluginEntryPoint.hpp>
 #include <WebSockets/WebSocket.hpp>
@@ -343,21 +343,21 @@ struct ChatRoomPluginTests
      */
     void InitilizeClientWebSocket(size_t i) {
         clientConnection[i] = std::make_shared< MockConnection >(
-            SystemAbstractions::sprintf(
+            StringExtensions::sprintf(
                 "mock-client-%zu",
                 i
             ),
-            SystemAbstractions::sprintf(
+            StringExtensions::sprintf(
                 "mock-client-%zu:7777",
                 i
             )
         );
         serverConnection[i] = std::make_shared< MockConnection >(
-            SystemAbstractions::sprintf(
+            StringExtensions::sprintf(
                 "mock-server-%zu",
                 i
             ),
-            SystemAbstractions::sprintf(
+            StringExtensions::sprintf(
                 "mock-server-%zu:5555",
                 i
             )
@@ -430,7 +430,7 @@ struct ChatRoomPluginTests
                 std::string message
             ){
                 diagnosticMessages.push_back(
-                    SystemAbstractions::sprintf(
+                    StringExtensions::sprintf(
                         "%s[%zu]: %s",
                         senderName.c_str(),
                         level,
@@ -1527,7 +1527,7 @@ TEST_F(ChatRoomPluginTests, DifferentAnswersEachMathQuestion) {
         const auto answer = GetNextAnswer();
         ASSERT_EQ(3, questionComponents.size());
         ASSERT_EQ(
-            SystemAbstractions::sprintf(
+            StringExtensions::sprintf(
                 "What is %d * %d + %d?",
                 questionComponents[0],
                 questionComponents[1],
