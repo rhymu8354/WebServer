@@ -205,7 +205,7 @@ TEST_F(StaticContentPluginTests, Load) {
 
 TEST_F(StaticContentPluginTests, ServeTestFile) {
     SystemAbstractions::File testFile(testAreaPath + "/foo.txt");
-    (void)testFile.Create();
+    (void)testFile.OpenReadWrite();
     (void)testFile.Write("Hello!", 6);
     testFile.Close();
     MockServer server;
@@ -239,7 +239,7 @@ TEST_F(StaticContentPluginTests, ServeTestFile) {
 TEST_F(StaticContentPluginTests, ConditionalGetWithMatchingEntityTagHitsCache) {
     // Create test file.
     SystemAbstractions::File testFile(testAreaPath + "/foo.txt");
-    (void)testFile.Create();
+    (void)testFile.OpenReadWrite();
     (void)testFile.Write("Hello!", 6);
     testFile.Close();
 
@@ -290,7 +290,7 @@ TEST_F(StaticContentPluginTests, ConditionalGetWithMatchingEntityTagHitsCache) {
 TEST_F(StaticContentPluginTests, EntityTagComputedFromSha1) {
     // Create test file.
     SystemAbstractions::File testFile(testAreaPath + "/foo.txt");
-    (void)testFile.Create();
+    (void)testFile.OpenReadWrite();
     const std::string testFileContent = "Hello!";
     (void)testFile.Write(testFileContent.data(), testFileContent.length());
     testFile.Close();
@@ -340,8 +340,8 @@ TEST_F(StaticContentPluginTests, ServeMultipleResourceSpaces) {
     ASSERT_TRUE(SystemAbstractions::File::CreateDirectory(barTestAreaPath));
     SystemAbstractions::File testFile1(testAreaPath + "/foo/hello.txt");
     SystemAbstractions::File testFile2(testAreaPath + "/bar/hello.txt");
-    (void)testFile1.Create();
-    (void)testFile2.Create();
+    (void)testFile1.OpenReadWrite();
+    (void)testFile2.OpenReadWrite();
     (void)testFile1.Write("Hello!", 6);
     (void)testFile2.Write("World!", 6);
     testFile1.Close();
@@ -395,7 +395,7 @@ TEST_F(StaticContentPluginTests, ServeMultipleResourceSpaces) {
 
 TEST_F(StaticContentPluginTests, GzipServedTestFileIfClientAcceptsIt) {
     SystemAbstractions::File testFile(testAreaPath + "/foo.txt");
-    (void)testFile.Create();
+    (void)testFile.OpenReadWrite();
     (void)testFile.Write("Hello, World!", 6);
     testFile.Close();
     MockServer server;

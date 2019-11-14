@@ -227,7 +227,7 @@ namespace {
         std::string& fileContents
     ) {
         SystemAbstractions::File file(filePath);
-        if (file.Open()) {
+        if (file.OpenReadOnly()) {
             std::vector< uint8_t > fileContentsAsVector(file.GetSize());
             if (file.Read(fileContentsAsVector) != fileContentsAsVector.size()) {
                 diagnosticMessageDelegate(

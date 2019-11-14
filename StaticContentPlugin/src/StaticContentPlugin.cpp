@@ -196,7 +196,7 @@ extern "C" API void LoadPlugin(
                     file.IsExisting()
                     && !file.IsDirectory()
                 ) {
-                    if (file.Open()) {
+                    if (file.OpenReadOnly()) {
                         SystemAbstractions::File::Buffer buffer(file.GetSize());
                         if (file.Read(buffer) == buffer.size()) {
                             auto etag = Hash::BytesToString< Hash::Sha1 >(buffer);
