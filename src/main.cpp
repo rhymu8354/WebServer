@@ -262,7 +262,7 @@ namespace {
 
     /**
      * This function assembles the configuration of the server, and uses it
-     * to start server with the given transport layer.
+     * to start the server with the given transport layer.
      *
      * @param[in,out] server
      *     This is the server to configure and start.
